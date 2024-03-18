@@ -3,7 +3,7 @@ import numpy as np
 
 from scatterxct.core.discretization import Discretization 
 from scatterxct.core.wavefunction import WaveFunctionData, gaussian_wavepacket
-from scatterxct.core.propagator import PropagatorBase, DiabaticPropagator
+from scatterxct.core.propagator import PropagatorBase, TD_Propagator, Propagator
 from scatterxct.models.nonadiabatic_hamiltonian import HamiltonianBase, TD_HamiltonianBase
 from scatterxct.dynamics.options import BasisRepresentation, TimeDependence
 
@@ -26,30 +26,15 @@ class ScatterXctDynamics:
         self.initial_state = initial_state
         self.dt = dt
         self.mass = mass
-        
-        # determine the time dependence for the problem
-        if isinstance(hamiltonian, TD_HamiltonianBase):
-            self.time_dependence = TimeDependence.TimeDependent
-            raise NotImplementedError("Time-dependent Hamiltonian is not implemented yet.")
-        else:
-            self.time_dependence = TimeDependence.TimeIndependent
-            
-        # setting the basis representation
-        if basis_representation == BasisRepresentation.Diabatic:
-            self.basis_representation = BasisRepresentation.Diabatic
-        else:
-            self.basis_representation = BasisRepresentation.Adiabatic
-            raise NotImplementedError("Adiabatic representation is not implemented yet.")
+        # parse the options
+        self._parse_options(hamiltonian, basis_representation)
         
         # get the discretization 
-        if self.time_dependence == TimeDependence.TimeIndependent:
-            self.discretization = self._get_time_independent_descretization()
-        else:
-            raise NotImplementedError("Time-dependent Hamiltonian is not implemented yet.")
+        self.discretization = self._get_descretization()
         
         # get the propagator
         if self.basis_representation == BasisRepresentation.Diabatic:
-            self.propagator: PropagatorBase = self._get_diabatic_propagator(self.discretization)
+            self.propagator: PropagatorBase = self._get_propagator(self.discretization)
         else:
             raise NotImplementedError("Adiabatic representation is not implemented yet.")
         
@@ -61,23 +46,42 @@ class ScatterXctDynamics:
         representation = "Diabatic" if self.basis_representation == BasisRepresentation.Diabatic else "Adiabatic"
         simulation_type = f"{time_dependence} {representation}"
         return f"<ScatterXctDynamics: ngrid={self.ngrid}, nstates={self.nstates}, dt={self.dt}, {simulation_type=}>"
+    
+    def _parse_options(self, hamiltonian: HamiltonianBase, basis_representation: BasisRepresentation) -> None:
+        # parse the time dependence for the problem
+        time_dependence = None
+        if isinstance(hamiltonian, TD_HamiltonianBase):
+            time_dependence = TimeDependence.TimeDependent
+        elif isinstance(hamiltonian, HamiltonianBase):
+            time_dependence = TimeDependence.TimeIndependent
+        else:
+            raise TypeError(f"Got unexpected type for hamiltonian: {type(hamiltonian)}")    
+        self.time_dependence = time_dependence    
         
-    def _get_time_independent_descretization(self,) -> Discretization:
-        dummy_time: float = 0.0
-        def hamiltonian_wrapper(R: float) -> np.ndarray:
-            return self.hamiltonian.H(t=dummy_time, r=R)
+        # parse the basis representation for the problem
+        self.basis_representation = basis_representation
         
+    def _get_descretization(self,) -> Discretization:
         discretization = Discretization.from_diabatic_potentials(
-            R0=self.R0, k0=self.k0, hamiltonian=hamiltonian_wrapper, mass=self.mass, dt=self.dt
+            R0=self.R0, k0=self.k0, mass=self.mass, dt=self.dt
         )
         return discretization
     
-    def _get_diabatic_propagator(self, discretization: Discretization) -> DiabaticPropagator:
-        return DiabaticPropagator.from_discretization(discretization)
+    def _get_propagator(self, discretization: Discretization) -> PropagatorBase:
+        if self.basis_representation == BasisRepresentation.Diabatic:
+            if self.time_dependence == TimeDependence.TimeIndependent:
+                return Propagator.from_discretization(hamiltonian=self.hamiltonian, discretization=discretization)
+            elif self.time_dependence == TimeDependence.TimeDependent:
+                return TD_Propagator.from_discretization(hamiltonian=self.hamiltonian, discretization=discretization)
+            else:
+                raise ValueError(f"Got unexpected time_dependence: {self.time_dependence}")
+        else:
+            raise NotImplementedError(f"Propagation in the {self.basis_representation} representation is not implemented yet.")
+                
     
-    def _get_wavefunction_data(self,) -> WaveFunctionData:
+    def _get_wavefunction_data(self, ) -> WaveFunctionData:
         ngrid: int = self.discretization.ngrid
-        nstates: int = self.discretization.nstates
+        nstates: int = self.propagator.nstates
         
         R = self.discretization.R
         
@@ -87,11 +91,11 @@ class ScatterXctDynamics:
     
     @property
     def ngrid(self) -> int:
-        return self.discretization.ngrid
+        return self.propagator.ngrid
     
     @property
     def nstates(self) -> int:
-        return self.discretization.nstates
+        return self.propagator.nstates
     
 
 # %%

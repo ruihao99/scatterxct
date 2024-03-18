@@ -58,10 +58,10 @@ class TullyOne(HamiltonianBase):
     def __repr__(self) -> str:
         return f"Nonadiabatic Hamiltonian TullyOne(A={self.A}, B={self.B}, C={self.C}, D={self.D})"
     
-    def H(self, t: Real, r: Union[Real, ArrayLike]) -> ArrayLike:
+    def H(self, t: Real, r: Union[Real, ArrayLike], reduce_nuc: bool=True) -> ArrayLike:
         V11 = self.V11(r, self.A, self.B)
         V12 = self.V12(r, self.C, self.D)
-        return _construct_2D_H(r, V11, V12, -V11)
+        return _construct_2D_H(r, V11, V12, -V11, reduce_nuc)
     
     def dHdR(self, t: Real, r: Union[Real, ArrayLike]) -> ArrayLike:
         dV11dR = self.dV11dR(r, self.A, self.B)
@@ -74,13 +74,18 @@ def _construct_2D_H(
     V11: Union[Real, ArrayLike],
     V12: Union[Real, ArrayLike],
     V22: Union[Real, ArrayLike],
+    reduce_nuc: bool = True,
 ) -> ArrayLike:
     if isinstance(r, Real):
         return np.array([[V11, V12], [np.conj(V12), V22]])
     elif isinstance(r, np.ndarray):
-        try:
-            return np.sum(np.array([[V11, V12], [V12.conj(), V22]]), axis=-1)
-        except ValueError:
-            raise ValueError(f"The input array 'r' must be either a number or a 1D array. 'r' input here has dimension of {r.ndim}.")
+        H = np.array([[V11, V12], [V12.conj(), V22]]) 
+        if reduce_nuc:
+            try:
+                return np.sum(H, axis=-1)
+            except ValueError:
+                raise ValueError(f"The input array 'r' must be either a number or a 1D array. 'r' input here has dimension of {r.ndim}.")
+        else:
+            return H
     else:
         raise NotImplemented

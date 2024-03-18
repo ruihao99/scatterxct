@@ -18,18 +18,18 @@ class TD_HamiltonianBase(HamiltonianBase):
         super().__init__(dim)
         self.pulse = pulse
         
-    def H(self, t: float, r: Union[float, ArrayLike]) -> ArrayLike:
-        return self.H0(r) + self.H1(t, r)
+    def H(self, t: float, r: Union[float, ArrayLike], reduce_nuc: bool=True) -> ArrayLike:
+        return self.H0(r, reduce_nuc) + self.H1(t, r, reduce_nuc)
     
     def dHdR(self, t: float, r: Union[float, ArrayLike]) -> ArrayLike:
         return self.dH0dR(r) + self.dH1dR(t, r)
     
     @abstractmethod 
-    def H0(self, r: Union[float, ArrayLike]) -> ArrayLike:
+    def H0(self, r: Union[float, ArrayLike], reduce_nuc: bool=True) -> ArrayLike:
         pass
     
     @abstractmethod 
-    def H1(self, t: float, r: Union[float, ArrayLike], pulse: Pulse) -> ArrayLike:
+    def H1(self, t: float, r: Union[float, ArrayLike], reduce_nuc: bool=True) -> ArrayLike:
         pass
     
     @abstractmethod
@@ -37,5 +37,5 @@ class TD_HamiltonianBase(HamiltonianBase):
         pass
     
     @abstractmethod 
-    def dH1dR(self, t: float, r: Union[float, ArrayLike], pulse: Pulse) -> ArrayLike:
+    def dH1dR(self, t: float, r: Union[float, ArrayLike]) -> ArrayLike:
         pass

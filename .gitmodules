@@ -1,0 +1,3 @@
+[submodule "thirdparty/pymddrive"]
+	path = thirdparty/pymddrive
+	url = git@github.com:ruihao69/pymddrive.git

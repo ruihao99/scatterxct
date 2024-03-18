@@ -41,6 +41,8 @@ def gaussian_wavepacket_kspace(k: ArrayLike, a: float, R0: float, k0: float) -> 
     Returns:
         ArrayLike: the wavefunction in reciprocal space
     """
+    a *= 2 * np.sqrt(np.pi)
+    # a *= np.pi
     prefactor: float = np.sqrt(a / np.sqrt(np.pi))
     exp_re: ArrayLike = np.exp(-0.5 * a**2 * (k - k0)**2)
     exp_im: ArrayLike = np.exp(-1j * (k - k0) * R0)
@@ -59,5 +61,8 @@ def estimate_a_from_k0(k0: float) -> float:
     ---------
     [1] Tully, J. C. (1990). Molecular dynamics with electronic transitions. The Journal of Chemical Physics.
         "The width parameter was typically chosen to be 20 times the inverse of the initial momentum."
+        (note that the tully paper uses gaussian wavepackets as exp(-ikx) * exp(-(x-x0)^2/a^2) )
+        here we use exp(ikx) * exp(-(x-x0)^2/(2a^2)). Hence the factor of sqrt(2) in the denominator.
     """
-    return 1.0 / k0 * 20.0
+    return 1.0 / k0 * 10.0 * np.sqrt(2.0)
+# %%

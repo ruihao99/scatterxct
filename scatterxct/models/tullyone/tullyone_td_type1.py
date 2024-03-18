@@ -29,14 +29,14 @@ class TullyOneTD_type1(TD_HamiltonianBase):
     def __repr__(self) -> str:
         return f"Nonadiabatic Hamiltonian TullyOneTD_type1(A={self.A}, B={self.B}, C={self.C}, D={self.D}, pulse={self.pulse})" 
     
-    def H0(self, r: Union[Real, ArrayLike]) -> ArrayLike:
+    def H0(self, r: Union[Real, ArrayLike], reduce_nuc: bool=True) -> ArrayLike:
         V11 = TullyOne.V11(r, self.A, self.B)
         V12 = TullyOne.V12(r, self.C, self.D)
-        return _construct_2D_H(r, V11, V12, -V11)
+        return _construct_2D_H(r, V11, V12, -V11, reduce_nuc=reduce_nuc)
     
-    def H1(self, t: Real, r: Union[Real, ArrayLike]) -> ArrayLike:
+    def H1(self, t: Real, r: Union[Real, ArrayLike], reduce_nuc: bool=True) -> ArrayLike:
         V12 = self.pulse(t) * np.ones_like(r)
-        return _construct_2D_H(r, np.zeros_like(r), V12, np.zeros_like(r))
+        return _construct_2D_H(r, np.zeros_like(r), V12, np.zeros_like(r), reduce_nuc=reduce_nuc)
     
     def dH0dR(self, r: Union[Real, ArrayLike]) -> ArrayLike:
         dV11dR = TullyOne.dV11dR(r, self.A, self.B)

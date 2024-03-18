@@ -6,14 +6,14 @@ from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt
 
 class ScatterMovie:
-    def __init__(self, R: ArrayLike, H: ArrayLike,):
+    def __init__(self, R: ArrayLike, ):
         self.R = R
         self.fig, self.ax = plt.subplots(dpi=300,)
         self.axtwinx = self.ax.twinx()
         self.axtwinx.set_ylabel("Energy (a.u.)")
         self.frames = []
+        self.H_frames = []
         self.times = []
-        self.E = self.get_adiabatic_energy_levels(H)
         self.FPS = 8
         
     def get_adiabatic_energy_levels(self, H: ArrayLike) -> ArrayLike:
@@ -26,9 +26,10 @@ class ScatterMovie:
         return E
     
         
-    def append_frame(self, probability_density: ArrayLike, time: float) -> None:
-        self.frames.append(probability_density)
+    def append_frame(self, time: float, probability_density: ArrayLike, H: ArrayLike) -> None:
         self.times.append(time)
+        self.frames.append(probability_density.copy())
+        self.H_frames.append(H.copy())
         
     def add_labels(self, ) -> None: 
         self.ax.set_xlabel("R (a.u.)")
@@ -46,9 +47,10 @@ class ScatterMovie:
         # axtwinx = self.ax.twinx()
         # self.axtwinx = axtwinx
         nstates = self.frames[i].shape[1]
+        E = self.get_adiabatic_energy_levels(self.H_frames[i])
         for ii in range(nstates):
             self.ax.plot(self.R, self.frames[i][:, ii], label=f"State {ii}")
-            self.axtwinx.plot(self.R, self.E[ii, :], ls="--", lw=2)
+            self.axtwinx.plot(self.R, E[ii, :], ls="--", lw=2)
         self.ax.set_title(f"Time: {self.times[i]: .2f} a.u.")
         # use text to replace the buggy ylabel
         self.axtwinx.text(1.18, 0.5, "Energy (a.u.)", ha='center', va='center', rotation=90, transform=self.axtwinx.transAxes)

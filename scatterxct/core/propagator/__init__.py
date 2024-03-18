@@ -1,7 +1,9 @@
-from .diabatic_propagator import DiabaticPropagator
 from .propagator_base import PropagatorBase
+from .propagator import Propagator
+from .td_propagator import TD_Propagator
 
 __all__ = [
     "PropagatorBase",
-    "DiabaticPropagator"
+    "Propagator",
+    "TD_Propagator",
 ]

@@ -32,7 +32,7 @@ def estimate_R_lims(
     """
     N_MAX: int = 1000 # break the loop if the number of iterations exceeds this value
     SAFTY_FACTOR_K: float = 1.5 # make sure the kgrid is large enough
-    SAFTY_FACTOR_R: float = 5 # make sure the wavepacket is fully contained in the grid
+    SAFTY_FACTOR_R: float = 6 # make sure the wavepacket is fully contained in the grid
     
     scatter_direction = ScatterDirection.FROM_LEFT if k0 > 0 else ScatterDirection.FROM_RIGHT
     

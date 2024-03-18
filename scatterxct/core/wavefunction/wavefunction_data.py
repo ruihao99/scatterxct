@@ -34,8 +34,10 @@ class WaveFunctionData:
         # psi_k = pyfftw.empty_aligned(psi_in.shape, dtype='complex128')
         psi = pyfftw.empty_aligned(psi_in.shape, dtype='complex128')
         # Create the FFTW objects
-        fft_object = FFTW(psi, psi, axes=(0,), direction='FFTW_FORWARD')
-        ifft_object = FFTW(psi, psi, axes=(0,), direction='FFTW_BACKWARD')
+        fft_object = FFTW(psi, psi, axes=(0,), direction='FFTW_FORWARD', ortho=True, normalise_idft=False)
+        ifft_object = FFTW(psi, psi, axes=(0,), direction='FFTW_BACKWARD', ortho=True, normalise_idft=False)
+        # fft_object = FFTW(psi, psi, axes=(0,), direction='FFTW_FORWARD',)
+        # ifft_object = FFTW(psi, psi, axes=(0,), direction='FFTW_BACKWARD',)
         # Initialize the wavefunction in real space
         psi[:] = psi_in
         # wavefunction_type = WaveFunctionType.REAL_SPACE
@@ -68,7 +70,7 @@ class WaveFunctionData:
     def nstates(self) -> int:
         return self.psi.shape[1]
 # %%
-def test_main():
+def test_transformations():
     psi = np.zeros((5, 2), dtype=np.complex128)
     psi[0, 0] = 1.0
     wavefunction_data = WaveFunctionData.from_numpy_psi(psi)
@@ -113,8 +115,63 @@ def test_main():
     
     return wavefunction_data
 
+def test_reciprocal_spaces():
+    from scatterxct.core.discretization import Discretization
+    from scatterxct.models.tullyone import get_tullyone, TullyOnePulseTypes
+    from scatterxct.core.wavefunction import WaveFunctionData, gaussian_wavepacket, view_wavepacket, gaussian_wavepacket_kspace
+    
+    hamiltonian = get_tullyone(
+        pulse_type=TullyOnePulseTypes.NO_PULSE
+    )
+    R0 = -10
+    k0 = 10
+    dt = 0.1
+    discretization = Discretization.from_diabatic_potentials(
+        R0=R0, k0=k0, mass=2000.0, dt=dt
+    )
+    R = discretization.R
+    k = discretization.k
+    
+    psi = np.zeros((discretization.ngrid, 2), dtype=np.complex128)
+    psi[:, 0] = gaussian_wavepacket(R, R0, k0)
+    
+    psi_data = WaveFunctionData.from_numpy_psi(psi)
+    
+    # view the wavepacket in real space 
+    a = 1/20 * k0
+    fig = view_wavepacket(R, psi_data.psi)
+    ax = fig.get_axes()[0]
+    ax.set_xlim(-15, 5)
+    ax.axvline(R0, ls='--', color='black')
+    ax.axvline(R0-3*a*2, ls='--', color='black')
+    ax.axvline(R0+3*a*2, ls='--', color='black')
+    
+    print(f"{np.sum(np.abs(psi_data.psi[:, 0])**2) * discretization.dR=}")
+    
+    # view the wavepacket in k-space
+    psi_data.real_space_to_k_space()
+    # fig = view_wavepacket(k, psi_data.psi)
+    fig = view_wavepacket(R, psi_data.psi)
+    
+    print(f"{np.sum(np.abs(psi_data.psi[:, 0])**2) * discretization.dR=}")
+    
+    H = hamiltonian.H(t=0, r=R, reduce_nuc=False)
+    print(f"{H.shape=}")
+    
+    psi_data.k_space_to_real_space()
+    
+    E = np.zeros((discretization.ngrid), dtype=np.float64)
+    for ii in range(discretization.ngrid):
+        H_ii = H[:, :, ii]
+        E[ii] = np.dot(psi_data.psi[ii, :].conjugate().T, np.dot(H_ii, psi_data.psi[ii, :])).real
+        
+    print(f"{np.sum(E, axis=0)*discretization.dR=}")
+
+    
+
 # %%
 if __name__ == "__main__":
-    test_main()
+    # test_transformations()
+    test_reciprocal_spaces()
 
 # %%
