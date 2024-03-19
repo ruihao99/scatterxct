@@ -10,6 +10,10 @@ from utils import get_tullyone_p0_list, estimate_delay_time_tullyone, estimate_d
 from typing import Optional
 from pathlib import Path
 
+def check_if_has_ffmpeg():
+    import shutil
+    return shutil.which("ffmpeg") is not None
+
 def run_single_tullyone(
     R0: float,
     k0: float,
@@ -44,7 +48,10 @@ def run_single_tullyone(
     # else:
     #     # fname_movie: str = f"scatter_movie-k0_{k0}-Omega_{Omega}-tau_{tau}.gif"
     #     fname_movie: str = f"scatter_movie-k0_{k0}.mp4"
-    fname_movie: str = f"scatter_movie-k0_{k0:0.4f}.mp4"
+    if check_if_has_ffmpeg():
+        fname_movie: str = f"scatter_movie-k0_{k0:0.4f}.mp4"
+    else:
+        fname_movie: str = f"scatter_movie-k0_{k0:0.4f}.gif"
         
     if save_movie:
         dir_movie: Path = project_dir / fname_movie
