@@ -87,7 +87,9 @@ class ScatterXctDynamics:
         
         psi = np.zeros((ngrid, nstates), dtype=np.complex128)
         psi[:, self.initial_state] = gaussian_wavepacket(R, self.R0, self.k0)
-        return WaveFunctionData.from_numpy_psi(psi_in=psi)
+        
+        diabatic_representation_flag = True if self.basis_representation == BasisRepresentation.Diabatic else False
+        return WaveFunctionData.from_numpy_psi(psi, diabatic_representation_flag)
     
     @property
     def ngrid(self) -> int:

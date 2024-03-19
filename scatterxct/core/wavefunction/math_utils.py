@@ -4,6 +4,9 @@ from numba import jit
 from numpy.typing import ArrayLike
 import scipy.linalg as LA
 
+
+from typing import Optional, Tuple
+
 """ Wavefunction math utilities """
 """ Convention: """
 """ - wavefunction shape: (ngrid, nstates) """
@@ -199,5 +202,56 @@ def calculate_PE(
     expval_E[mask] = np.nan
     expval_E[~mask] /= normalization[~mask] 
     return expval_E
+
+def psi_diabatic_to_adiabatic(
+    psi_diabatic: ArrayLike,
+    U: ArrayLike, 
+    psi_adiabatic: Optional[ArrayLike] = None,
+) -> ArrayLike:
+    psi_adiabatic = _psi_psi_shape_checker(psi_diabatic, psi_adiabatic)
+    np.einsum("jki,ij->ik", U, psi_diabatic, out=psi_adiabatic)
+    return psi_adiabatic
+
+def psi_adiabatic_to_diabatic(
+    psi_adiabatic: ArrayLike,
+    U: ArrayLike, 
+    psi_diabatic: Optional[ArrayLike] = None,
+) -> ArrayLike:
+    psi_diabatic = _psi_psi_shape_checker(psi_adiabatic, psi_diabatic)
+    np.einsum("jki,ik->ij", U, psi_adiabatic, out=psi_diabatic)
+    return psi_diabatic
+        
+def _psi_psi_shape_checker(psi: ArrayLike, psi_other_rep: Optional[ArrayLike]=None) -> ArrayLike:
+    if psi_other_rep is None:
+        psi_other_rep = np.zeros_like(psi)
+    else:
+        assert psi.shape == psi_other_rep.shape, f"The shapes of psi and psi_other_rep do not match: {psi.shape} != {psi_other_rep.shape}"
+    return psi_other_rep
+        
     
+# %%
+import numpy as np
+def _test_inplace_einsum_vs_plain_einsum(ndim: int):
+    import time
+    NGRID = 10
+    U = np.random.rand(ndim, ndim, NGRID)
+    PSI = np.random.rand(ndim, NGRID)
+    
+    # test the performance of the plain einsum
+    start = time.perf_counter_ns()
+    dummy = np.einsum("jki,ji->ki", U.conj(), PSI)
+    end = time.perf_counter_ns()
+    print(f"plain einsum: {end - start} ns")
+    
+    #test the performance of the inplace einsum
+    start = time.perf_counter_ns()
+    PSI_out = np.zeros_like(PSI)
+    np.einsum("jki,ji->ki", U.conj(), PSI, out=PSI_out)
+    end = time.perf_counter_ns()
+    print(f"inplace einsum: {end - start} ns")
+    
+# %%
+if __name__ == "__main__":
+    _test_inplace_einsum_vs_plain_einsum(2)
+
 # %%

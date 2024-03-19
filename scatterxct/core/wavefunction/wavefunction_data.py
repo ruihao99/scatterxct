@@ -4,6 +4,11 @@ from numpy.typing import ArrayLike
 import pyfftw
 from pyfftw import FFTW
 
+from scatterxct.core.wavefunction.math_utils import (
+    psi_adiabatic_to_diabatic, 
+    psi_diabatic_to_adiabatic
+)
+
 from dataclasses import dataclass
 from enum import Enum, unique
 
@@ -11,6 +16,11 @@ from enum import Enum, unique
 class WaveFunctionType(Enum):
     REAL_SPACE = 1
     RECIPROCAL_SPACE = 2
+    
+@unique
+class WaveFunctionRepresentation(Enum):
+    ADIABATIC = 1
+    DIABATIC = 2
     
 @dataclass
 class WaveFunctionStatus:
@@ -20,30 +30,34 @@ class WaveFunctionStatus:
 @dataclass(frozen=True)
 class WaveFunctionData:
     """ The shape of the wavefunction is (ngrid, nstates). """
-    # psi_R: np.ndarray  # The wavefunction in real space
-    # psi_k: np.ndarray  # The wavefunction in reciprocal space
     psi: np.ndarray  # The wavefunction 
+    psi_cache: np.ndarray  # pre-allocated array for the wavefunction
     fft_object: FFTW  # The FFTW object used to transform the wavefunction
     ifft_object: FFTW  # The FFTW object used to transform the wavefunction
     status: WaveFunctionStatus
+    representation: WaveFunctionRepresentation = WaveFunctionRepresentation.DIABATIC
     
     @classmethod
-    def from_numpy_psi(cls, psi_in: ArrayLike) -> "WaveFunctionData":
-        # create the real and reciprocal space arrays
-        # psi_R = pyfftw.empty_aligned(psi_in.shape, dtype='complex128')
-        # psi_k = pyfftw.empty_aligned(psi_in.shape, dtype='complex128')
+    def from_numpy_psi(cls, psi_in: ArrayLike, is_diabatic: bool = True) -> "WaveFunctionData":
+        # create aligned psi array according the the pyFFTW requirements
         psi = pyfftw.empty_aligned(psi_in.shape, dtype='complex128')
-        # Create the FFTW objects
+        
+        # Create the FFTW objects (orthogonalized, meaning unitary)
         fft_object = FFTW(psi, psi, axes=(0,), direction='FFTW_FORWARD', ortho=True, normalise_idft=False)
         ifft_object = FFTW(psi, psi, axes=(0,), direction='FFTW_BACKWARD', ortho=True, normalise_idft=False)
-        # fft_object = FFTW(psi, psi, axes=(0,), direction='FFTW_FORWARD',)
-        # ifft_object = FFTW(psi, psi, axes=(0,), direction='FFTW_BACKWARD',)
-        # Initialize the wavefunction in real space
+        
+        # Initialize the wavefunction using numpy array (real space representation)
         psi[:] = psi_in
-        # wavefunction_type = WaveFunctionType.REAL_SPACE
+        psi_cache = np.zeros_like(psi)
         status = WaveFunctionStatus(type=WaveFunctionType.REAL_SPACE)
+        
+        # get the wavefunction representation from the input flag
+        representation = WaveFunctionRepresentation.DIABATIC if is_diabatic else WaveFunctionRepresentation.ADIABATIC
+        
         # return the WaveFunctionData object
-        return cls(psi, fft_object, ifft_object, status)
+        return cls(
+            psi=psi, psi_cache=psi_cache, fft_object=fft_object, ifft_object=ifft_object, status=status, representation=representation
+        )
     
     def real_space_to_k_space(self) -> ArrayLike:
         if self.status.type == WaveFunctionType.REAL_SPACE:
@@ -61,6 +75,11 @@ class WaveFunctionData:
         else:
             raise RuntimeError("Tried to convert a real-space wavefunction to real-space. Check the wavefunction type!")
         
+    def get_psi_of_the_other_representation(self, U:ArrayLike) -> ArrayLike:
+        if self.representation == WaveFunctionRepresentation.DIABATIC:
+            return psi_diabatic_to_adiabatic(psi_diabatic=self.psi, U=U, psi_adiabatic=self.psi_cache)
+        else:
+            return psi_adiabatic_to_diabatic(psi_adiabatic=self.psi, U=U, psi_diabatic=self.psi_cache)
     
     @property
     def ngrid(self) -> int:

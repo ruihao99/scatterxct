@@ -60,7 +60,7 @@ def main(
 # %%
 if __name__ == "__main__":
     R0 = -10.0
-    k0 = 30.0
+    k0 = 5.0
     Omega = 0.3
     tau = 100.0
     
@@ -116,7 +116,7 @@ if __name__ == "__main__":
     KE = np.array(output['KE'])
     PE = np.array(output['PE'])
     
-    print(KE.shape, diab_populations.shape, PE.shape)
+    # print(KE.shape, diab_populations.shape, PE.shape)
     
     fig = plt.figure(dpi=300)
     ax = fig.add_subplot(111)
@@ -151,15 +151,6 @@ if __name__ == "__main__":
     ax.set_xlabel("time (a.u.)")
     ax.set_ylabel("Energy (a.u.)")
     plt.show()
-    
-   
-    
-    
-    
-    
-    
 
-# %%
-
-PE
+    
 # %%

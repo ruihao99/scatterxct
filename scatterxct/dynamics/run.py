@@ -30,7 +30,8 @@ def outside_boundary(expected_R: float, R_lims: Tuple[float, float]) -> bool:
 def break_condition(psi: ArrayLike, R: ArrayLike, R_lims: Tuple[float, float]) -> bool:
     dR: float = R[1] - R[0]
     expected_R = expected_value(psi, R, dR)
-    return outside_boundary(expected_R, R_lims)
+    each_state_expected_R = calculate_mean_R(psi, R, dR)
+    return outside_boundary(expected_R, R_lims) or all(outside_boundary(expected_R, R_lims) for expected_R in each_state_expected_R) 
 
 def run_time_independent_dynamics(
     hamiltonian, 
@@ -87,9 +88,13 @@ def run_time_independent_dynamics(
             tlist = np.append(tlist, time)
             properties: NamedTuple = evaluate_properties(discretization, propagator, wavefunction_data)
             output = append_properties(properties, output) 
-            print(f"{time=}, {properties.R=}")
+            # print(f"{time=}, {properties.R=}")
         if (istep % movie_every == 0) and (scatter_movie is not None):
-            nuclear_density: ArrayLike = get_nuclear_density(wavefunction_data.psi, discretization.dR)
+            # we particularly want to save the wavepacket movie in the adiabatic representation
+            if dynamics.basis_representation == BasisRepresentation.Diabatic:
+                nuclear_density: ArrayLike = get_nuclear_density(wavefunction_data.get_psi_of_the_other_representation(U=propagator.U), discretization.dR)
+            else:
+                nuclear_density: ArrayLike = get_nuclear_density(wavefunction_data.psi, discretization.dR)
             scatter_movie.append_frame(time, nuclear_density, propagator.H)
         time, wavefunction_data = propagate(
             time, wavefunction_data, propagator, split_operator_type

@@ -164,6 +164,7 @@ cython_debug/
 *.pdf
 *.dat
 *.gif
+*.mp4
 
 # nohup 
 nohup.out

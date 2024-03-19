@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 class ScatterMovie:
     def __init__(self, R: ArrayLike, ):
         self.R = R
-        self.fig, self.ax = plt.subplots(dpi=300,)
+        self.fig, self.ax = plt.subplots(dpi=250,)
         self.axtwinx = self.ax.twinx()
         self.axtwinx.set_ylabel("Energy (a.u.)")
         self.frames = []
