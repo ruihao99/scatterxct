@@ -1,4 +1,3 @@
-# %%
 import numpy as np
 from joblib import Parallel, delayed
 
@@ -9,6 +8,7 @@ from utils import get_tullyone_p0_list, estimate_delay_time_tullyone, estimate_d
 
 from typing import Optional
 from pathlib import Path
+import argparse
 
 def check_if_has_ffmpeg():
     import shutil
@@ -73,7 +73,7 @@ def run_single_tullyone(
 def main(
     n_momentum_samples: int = 48, 
     pulse_type: TullyOnePulseTypes = TullyOnePulseTypes.NO_PULSE,
-    omega: Optional[float] = None,  
+    Omega: Optional[float] = None,  
     tau: Optional[float] = None,
 ):
     
@@ -81,7 +81,7 @@ def main(
         if pulse_type == TullyOnePulseTypes.NO_PULSE: 
             return f"data_{pulse_type.name}"
         else:
-            return f"data_{pulse_type.name}-Omega_{omega:0.4f}-tau_{tau: 0.4f}"
+            return f"data_{pulse_type.name}-Omega_{Omega:0.4f}-tau_{tau:0.4f}"
     
     # make the directory if it does not exist
     project_dir: Path = Path(pulse_type_to_dir_name(pulse_type))
@@ -89,9 +89,8 @@ def main(
     
     # prepare the momentum list, and a fixed list of R0, Omega, and tau
     k0 = get_tullyone_p0_list(n_momentum_samples, pulse_type)
-    # k0 = np.linspace(20.0, 35.0, n_momentum_samples)
     R0 = np.array([-10.0] * n_momentum_samples)
-    Omega = np.array([omega] * n_momentum_samples)
+    Omega = np.array([Omega] * n_momentum_samples)
     tau = np.array([tau] * n_momentum_samples)
     
     output = Parallel(n_jobs=-1)(
@@ -118,19 +117,23 @@ def main(
     
 # %%
 if __name__ == "__main__":
-    main(
-        n_momentum_samples=48,
-        pulse_type=TullyOnePulseTypes.NO_PULSE,
-    )
-    # run_single_tullyone(
-    #     R0=-10.0,
-    #     k0=30.0,
-    #     pulse_type=TullyOnePulseTypes.NO_PULSE,
-    #     Omega=None,
-    #     tau=None,
-    #     project_dir=Path("./"),
-    #     save_movie=True
-    # )
-    # print(TullyOnePulseTypes.PULSE_TYPE1.name)
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument("--Omega", type=float)
+    argparser.add_argument("--tau", type=float)
     
-# %%
+    # if the user does not provide the Omega and tau, then complain and throw an error
+    if len(argparser.parse_args()) != 2:
+        raise ValueError("Please provide the Omega and tau.")
+    
+    parsed_args = argparser.parse_args()
+    
+    Omega = parsed_args.Omega
+    tau = parsed_args.tau
+    NSAMPLES = 48
+    
+    main(
+        n_momentum_samples=NSAMPLES,
+        Omega=Omega,
+        tau=tau,
+        pulse_type=TullyOnePulseTypes.PULSE_TYPE3, 
+    )

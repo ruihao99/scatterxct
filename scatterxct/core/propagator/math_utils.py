@@ -18,10 +18,13 @@ def get_diabatic_V_propagators(
         ArrayLike: the diabatic propagators
     """
     _, _, ngrid = H.shape
+    V_ii = np.zeros((H.shape[0], H.shape[1]), dtype=np.complex128)
     for ii in range(ngrid):
         Hii = H[:, :, ii]
         evals, evecs = LA.eigh(Hii)
-        V[:, :, ii] = np.dot(np.diagflat(np.exp(-1j * evals * dt)), evecs.conj().T)
-        V[:, :, ii] = np.dot(evecs, V[:, :, ii])
+        V_ii = np.dot(np.diagflat(np.exp(-1j * evals * dt)), evecs.conj().T)
+        V[:, :, ii] = np.dot(evecs, V_ii)
+        # V[:, :, ii] = np.dot(np.diagflat(np.exp(-1j * evals * dt)), evecs.conj().T)
+        # V[:, :, ii] = np.dot(evecs, V[:, :, ii])
         E[:, ii], U[:, :, ii] = evals, evecs
     return V 
