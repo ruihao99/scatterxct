@@ -40,8 +40,8 @@ class MorletReal(PulseBase):
         phi: float,
         time: float
     ):
-        # return A * np.cos(Omega * (time - t0) + phi) * np.exp(-0.5 * (time - t0)**2 / tau**2)
-        return A * np.cos(Omega * time) * np.exp(-0.5 * (time - t0)**2 / tau**2)
+        return A * np.cos(Omega * (time - t0) + phi) * np.exp(-0.5 * (time - t0)**2 / tau**2)
+        # return A * np.cos(Omega * time) * np.exp(-0.5 * (time - t0)**2 / tau**2)
     
 # %% The temperary testting/debugging code
 def _test_debug_morlet_real():

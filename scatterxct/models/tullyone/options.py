@@ -30,7 +30,7 @@ class TD_Methods(Enum):
 def get_tullyone(
     A: Real = 0.01, B: Real = 1.6, C: Real = 0.005, D: Real = 1.0, # Tully parameters
     t0: Union[Real, None] = None, Omega: Union[Real, None] = None,
-    tau: Union[Real, None] = None, # pulse parameters
+    tau: Union[Real, None] = None, phi: Union[Real, None] = None, # pulse parameters
     pulse_type: TullyOnePulseTypes = TullyOnePulseTypes.NO_PULSE,
     td_method: TD_Methods = TD_Methods.BRUTE_FORCE,
     NF: Union[int, None] = None
@@ -48,7 +48,7 @@ def get_tullyone(
         raise ValueError(f"You need to provide the number of Floquet replicas NF for Floquet models.")
 
     if pulse_type == TullyOnePulseTypes.PULSE_TYPE1:
-        orig_pulse = MorletReal(A=C, t0=t0, tau=tau, Omega=Omega, phi=0)
+        orig_pulse = MorletReal(A=C, t0=t0, tau=tau, Omega=Omega, phi=phi)
         if td_method == TD_Methods.BRUTE_FORCE:
             return TullyOneTD_type1(A=A, B=B, C=0, D=0, pulse=orig_pulse)
         elif td_method == TD_Methods.FLOQUET:
@@ -58,7 +58,7 @@ def get_tullyone(
             raise ValueError(f"Invalid TD method: {td_method}")
 
     elif pulse_type == TullyOnePulseTypes.PULSE_TYPE2:
-        orig_pulse = MorletReal(A=1.0, t0=t0, tau=tau, Omega=Omega, phi=0)
+        orig_pulse = MorletReal(A=1.0, t0=t0, tau=tau, Omega=Omega, phi=phi)
         if td_method == TD_Methods.BRUTE_FORCE:
             return TullyOneTD_type2(A=A, B=B, C=C, D=D, pulse=orig_pulse)
         elif td_method == TD_Methods.FLOQUET:
@@ -68,7 +68,7 @@ def get_tullyone(
             raise ValueError(f"Invalid TD method: {td_method}")
 
     elif pulse_type == TullyOnePulseTypes.PULSE_TYPE3:
-        orig_pulse = MorletReal(A=C/2, t0=t0, tau=tau, Omega=Omega, phi=0)
+        orig_pulse = MorletReal(A=C/2, t0=t0, tau=tau, Omega=Omega, phi=phi)
         if td_method == TD_Methods.BRUTE_FORCE:
             return TullyOneTD_type1(A=A, B=B, C=C/2, D=D, pulse=orig_pulse)
         elif td_method == TD_Methods.FLOQUET:

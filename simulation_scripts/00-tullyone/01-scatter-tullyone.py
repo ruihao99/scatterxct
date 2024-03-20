@@ -20,6 +20,7 @@ def run_single_tullyone(
     pulse_type: TullyOnePulseTypes,
     Omega: Optional[float] = None,
     tau: Optional[float] = None,
+    phi: Optional[float] = None,
     project_dir: Path = Path("./"),
     save_movie: bool = False
 ):
@@ -34,7 +35,7 @@ def run_single_tullyone(
         )
     else:
         hamiltonian = get_tullyone(
-            t0=delay_time, Omega=Omega, tau=tau,
+            t0=delay_time, Omega=Omega, tau=tau, phi=phi,
             pulse_type=pulse_type
         )
     
@@ -75,6 +76,7 @@ def main(
     pulse_type: TullyOnePulseTypes = TullyOnePulseTypes.NO_PULSE,
     Omega: Optional[float] = None,  
     tau: Optional[float] = None,
+    phi: Optional[float] = None
 ):
     
     def pulse_type_to_dir_name(pulse_type: TullyOnePulseTypes) -> str:
@@ -92,10 +94,11 @@ def main(
     R0 = np.array([-10.0] * n_momentum_samples)
     Omega = np.array([Omega] * n_momentum_samples)
     tau = np.array([tau] * n_momentum_samples)
+    phi = np.array([phi] * n_momentum_samples)
     
     output = Parallel(n_jobs=-1)(
         delayed(run_single_tullyone)(
-            R0[i], k0[i], pulse_type, Omega[i], tau[i], project_dir, save_movie=True
+            R0[i], k0[i], pulse_type, Omega[i], tau[i], phi[i], project_dir, save_movie=True
         ) for i in range(n_momentum_samples)
     )
     
@@ -125,6 +128,7 @@ if __name__ == "__main__":
     # argparser.add_argument("--pulse_type", type=int)
     argparser.add_argument("Omega", type=float)
     argparser.add_argument("tau", type=float)
+    argparser.add_argument("phi", type=float)
     argparser.add_argument("pulse_type", type=int)
     
     # if the user does not provide the Omega and tau, then complain and throw an error
@@ -136,6 +140,7 @@ if __name__ == "__main__":
     
     Omega = parsed_args.Omega
     tau = parsed_args.tau
+    phi = parsed_args.phi
     _pulse_type = parsed_args.pulse_type
     if _pulse_type == 1:
         pulse_type = TullyOnePulseTypes.PULSE_TYPE1

@@ -51,10 +51,10 @@ class Gaussian(PulseBase):
         """
         t0 = morlet.t0; Omega = morlet.Omega; phi = morlet.phi
         if isinstance(Omega, Real):
-            # phase_factor = np.exp(-1.0j * (Omega * t0 - phi))
-            # gaussian_complex_A: Complex = morlet.A * phase_factor
-            # return cls(A=gaussian_complex_A, t0=t0, tau=morlet.tau)
-            return cls(A=morlet.A, t0=t0, tau=morlet.tau)
+            phase_factor = np.exp(-1.0j * (Omega * t0 - phi))
+            gaussian_complex_A: Complex = morlet.A * phase_factor
+            return cls(A=gaussian_complex_A, t0=t0, tau=morlet.tau)
+            # return cls(A=morlet.A, t0=t0, tau=morlet.tau)
         else:
             raise ValueError(f"The carrier frequency {Omega=} of the MorletReal pulse should be a real number, not {type(Omega)}.")
     
