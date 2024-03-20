@@ -118,22 +118,39 @@ def main(
 # %%
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
-    argparser.add_argument("--Omega", type=float)
-    argparser.add_argument("--tau", type=float)
+    # argparser.add_argument("--Omega", type=float)
+    # argparser.add_argument("--tau", type=float)
+    # argparser.add_argument("--pulse_type", type=int)
+    argparser.add_argument("Omega", type=float)
+    argparser.add_argument("tau", type=float)
+    argparser.add_argument("pulse_type", type=int)
     
     # if the user does not provide the Omega and tau, then complain and throw an error
-    if len(argparser.parse_args()) != 2:
-        raise ValueError("Please provide the Omega and tau.")
-    
     parsed_args = argparser.parse_args()
+
+    # if len(parsed_args) != 3:
+    #     raise ValueError("Please provide the Omega and tau.")
+    
     
     Omega = parsed_args.Omega
     tau = parsed_args.tau
+    _pulse_type = parsed_args.pulse_type
+    if _pulse_type == 1:
+        pulse_type = TullyOnePulseTypes.PULSE_TYPE1
+    elif _pulse_type == 2:
+        pulse_type = TullyOnePulseTypes.PULSE_TYPE2
+    elif _pulse_type == 3:
+        pulse_type = TullyOnePulseTypes.PULSE_TYPE3
+    elif _pulse_type == 0:
+        pulse_type = TullyOnePulseTypes.NO_PULSE
+    else:
+        raise ValueError(f"Unknown pulse type {_pulse_type=}")
+
     NSAMPLES = 48
     
     main(
         n_momentum_samples=NSAMPLES,
         Omega=Omega,
         tau=tau,
-        pulse_type=TullyOnePulseTypes.PULSE_TYPE3, 
+        pulse_type=pulse_type, 
     )

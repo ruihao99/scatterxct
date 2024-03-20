@@ -31,12 +31,12 @@ def break_condition(psi: ArrayLike, R: ArrayLike, R_lims: Tuple[float, float]) -
     dR: float = R[1] - R[0]
     expected_R = expected_value(psi, R, dR)
     each_state_expected_R = calculate_mean_R(psi, R, dR)
-    return outside_boundary(expected_R, R_lims) or all(outside_boundary(expected_R, R_lims) for expected_R in each_state_expected_R) 
+    return outside_boundary(expected_R, R_lims) or any(outside_boundary(expected_R, R_lims) for expected_R in each_state_expected_R)
 
 def run_time_independent_dynamics(
-    hamiltonian, 
-    R0: float, 
-    k0: float, 
+    hamiltonian,
+    R0: float,
+    k0: float,
     initial_state: int=0, # defaults to the ground state
     dt: float=0.1,
     mass: float=2000.0,
@@ -58,36 +58,36 @@ def run_time_independent_dynamics(
         basis_representation=basis_representation,
     )
     scatter_R_lims: Optional[Tuple[float, float]] = None
-    if k0 > 0: 
+    if k0 > 0:
         # scatter from the right to the left
         scatter_R_lims = (R0, -R0)
     elif k0 < 0:
         scatter_R_lims = (-R0, R0)
     else:
         raise ValueError("The initial momentum should not be zero.")
-    
-    
+
+
     # apply safe boundary conditions
     scatter_R_lims = safe_boundary(R_lims=scatter_R_lims)
-    
+
     discretization = dynamics.discretization
     propagator = dynamics.propagator
     wavefunction_data = dynamics.wavefunction_data
     tlist = np.array([], dtype=float)
     output = None
     time = 0.0
-    
+
     scatter_movie = None if fname_movie is None else ScatterMovie(
         R=discretization.R,
     )
-    
+
     for istep in range(max_iter):
         if istep % save_every == 0:
             if break_condition(dynamics.wavefunction_data.psi, dynamics.discretization.R, scatter_R_lims):
                 break
             tlist = np.append(tlist, time)
             properties: NamedTuple = evaluate_properties(discretization, propagator, wavefunction_data)
-            output = append_properties(properties, output) 
+            output = append_properties(properties, output)
             # print(f"{time=}, {properties.R=}")
         if (istep % movie_every == 0) and (scatter_movie is not None):
             # we particularly want to save the wavepacket movie in the adiabatic representation
@@ -103,7 +103,7 @@ def run_time_independent_dynamics(
     if scatter_movie is not None:
         scatter_movie.make_movie()
         scatter_movie.save_animation(fname_movie)
-        
-    return {'time': tlist, **output} 
+
+    return {'time': tlist, **output}
 
 # %%
