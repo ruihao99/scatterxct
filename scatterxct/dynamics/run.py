@@ -5,15 +5,16 @@ from numpy.typing import ArrayLike
 from scatterxct.core.wavefunction import calculate_mean_R, expected_value
 from scatterxct.core.wavefunction import ScatterMovie
 from scatterxct.core.wavefunction import get_nuclear_density
+from scatterxct.core.wavefunction.wavepacket import estimate_a_from_k0
 
 from .dynamics import ScatterXctDynamics
 from .options import BasisRepresentation
-from .properties import evaluate_properties, append_properties
+from .properties import evaluate_properties, append_properties, parse_scatter
 from .step import propagate, SplitOperatorType
 from .utils import safe_boundary
 
-
 from typing import Optional, Tuple, NamedTuple
+from pathlib import Path
 
 def outside_boundary(expected_R: float, R_lims: Tuple[float, float]) -> bool:
     """determine if the expected R value is outside the boundary.
@@ -45,7 +46,7 @@ def run_time_independent_dynamics(
     max_iter: int=int(1e6),
     save_every: int=10,
     movie_every: int=1000,
-    fname_movie: Optional[str]=None,
+    movie_path: Optional[Path]=None,
 ):
     """Run the time-independent dynamics."""
     dynamics = ScatterXctDynamics(
@@ -58,6 +59,7 @@ def run_time_independent_dynamics(
         basis_representation=basis_representation,
     )
     scatter_R_lims: Optional[Tuple[float, float]] = None
+    a = estimate_a_from_k0(k0)
     if k0 > 0:
         # scatter from the right to the left
         scatter_R_lims = (R0, -R0)
@@ -65,7 +67,6 @@ def run_time_independent_dynamics(
         scatter_R_lims = (-R0, R0)
     else:
         raise ValueError("The initial momentum should not be zero.")
-
 
     # apply safe boundary conditions
     scatter_R_lims = safe_boundary(R_lims=scatter_R_lims)
@@ -76,9 +77,25 @@ def run_time_independent_dynamics(
     tlist = np.array([], dtype=float)
     output = None
     time = 0.0
-
-    scatter_movie = None if fname_movie is None else ScatterMovie(
+    
+    def append_suffix(fpath: Path, suffix: str) -> Path:
+        empty_path_str = fpath.with_suffix("").name
+        return fpath.with_name(empty_path_str + suffix + fpath.suffix)
+    
+    # movie is named as *.gif, please change the name to *-diab.gif or *-adiab.gif 
+    diab_movie_path: Optional[Path] = None if movie_path is None else append_suffix(movie_path, "-diab") 
+    adiab_movie_path: Optional[Path] = None if movie_path is None else append_suffix(movie_path, "-adiab")
+    
+    # diab_fname_movie: Optional[str] = None if fname_movie is None else fname_movie.replace(".gif", "-diab.gif")
+    # adiab_fname_movie: Optional[str] = None if fname_movie is None else fname_movie.replace(".gif", "-adiab.gif")
+    
+    diab_scatter_movie = None if diab_movie_path is None else ScatterMovie(
         R=discretization.R,
+        state_representation=0
+    )
+    adiab_scatter_movie = None if adiab_movie_path is None else ScatterMovie(
+        R=discretization.R,
+        state_representation=1
     )
 
     for istep in range(max_iter):
@@ -89,21 +106,31 @@ def run_time_independent_dynamics(
             properties: NamedTuple = evaluate_properties(discretization, propagator, wavefunction_data)
             output = append_properties(properties, output)
             # print(f"{time=}, {properties.R=}")
-        if (istep % movie_every == 0) and (scatter_movie is not None):
+        if (istep % movie_every == 0) and (diab_scatter_movie is not None):
             # we particularly want to save the wavepacket movie in the adiabatic representation
-            if dynamics.basis_representation == BasisRepresentation.Diabatic:
-                nuclear_density: ArrayLike = get_nuclear_density(wavefunction_data.get_psi_of_the_other_representation(U=propagator.U), discretization.dR)
-            else:
-                nuclear_density: ArrayLike = get_nuclear_density(wavefunction_data.psi, discretization.dR)
-            scatter_movie.append_frame(time, nuclear_density, propagator.H)
+            # if dynamics.basis_representation == BasisRepresentation.Diabatic:
+            #     nuclear_density: ArrayLike = get_nuclear_density(wavefunction_data.get_psi_of_the_other_representation(U=propagator.U), discretization.dR)
+            # else:
+            #     nuclear_density: ArrayLike = get_nuclear_density(wavefunction_data.psi, discretization.dR)
+            nuclear_density_diab: ArrayLike = get_nuclear_density(wavefunction_data.psi, discretization.dR)
+            nuclear_density_adiab: ArrayLike = get_nuclear_density(wavefunction_data.get_psi_of_the_other_representation(U=propagator.U), discretization.dR)
+            adiab_scatter_movie.append_frame(time, nuclear_density_adiab, propagator.H)
+            diab_scatter_movie.append_frame(time, nuclear_density_diab, propagator.H)
         time, wavefunction_data = propagate(
             time, wavefunction_data, propagator, split_operator_type
         )
+    # parse_the scatter results
+    nuclear_density_diab: ArrayLike = get_nuclear_density(wavefunction_data.psi, discretization.dR)
+    nuclear_density_adiab: ArrayLike = get_nuclear_density(wavefunction_data.get_psi_of_the_other_representation(U=propagator.U), discretization.dR)
+    scatter_out_diab = parse_scatter(discretization.R, nuclear_density_diab, is_diabatic_representation=True)
+    scatter_out_adiab = parse_scatter(discretization.R, nuclear_density_adiab, is_diabatic_representation=False)
+    
     # finalize the the scatter movie
-    if scatter_movie is not None:
-        scatter_movie.make_movie()
-        scatter_movie.save_animation(fname_movie)
+    if diab_scatter_movie is not None:
+        for fname, movie in zip([diab_movie_path, adiab_movie_path], [diab_scatter_movie, adiab_scatter_movie]):
+            movie.make_movie()
+            movie.save_animation(fname)
 
-    return {'time': tlist, **output}
+    return {'time': tlist, **output, 'scatter_out_diab': scatter_out_diab, 'scatter_out_adiab': scatter_out_adiab}
 
 # %%

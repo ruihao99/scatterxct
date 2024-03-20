@@ -75,4 +75,74 @@ def append_properties(
     for field in properties._fields:
         output_dict[field].append(getattr(properties, field))
     return output_dict
-        
+
+def parse_scatter(
+    R: ArrayLike,
+    nuclear_density: ArrayLike,
+    is_diabatic_representation: bool,
+    separate_R: float = 0.0
+) -> ArrayLike:
+    """Parse the final wavefunction to get the scattering results.
+    The current implementation requires the last frame of the wavefunction.
+    However, this particular approach has its issues, as when the packets of 
+    different states are not well separated, the parsing can only give the 
+    semi-quantitative results. For tully scattering model one, the momentum 
+    range of (5, 10) can give schechy scattering results using this approach.
+
+    Args:
+        R (ArrayLike): the real space grid
+        psi (ArrayLike): the wavefunction in real space
+
+    Returns:
+        ArrayLike: the scattering results returned as (4,) array
+            (lower left, lower right, upper left, upper right)
+    """
+    mask_left = R <= separate_R
+    mask_right = R >= separate_R 
+    if is_diabatic_representation:
+        return _parse_scatter_diabatic(nuclear_density, mask_left, mask_right)
+    else:
+        return _parse_scatter_adiabatic(nuclear_density, mask_left, mask_right) 
+    
+def _parse_scatter_diabatic(
+    nuclear_density: ArrayLike,
+    mask_left: ArrayLike,
+    mask_right: ArrayLike,
+) -> ArrayLike:
+    out = np.zeros(4, dtype=np.float64)
+    
+    # lower left
+    out[0] = np.sum(nuclear_density[mask_left, 0])
+    
+    # lower right
+    out[1] = np.sum(nuclear_density[mask_right, 1])
+    
+    # upper left
+    out[2] = np.sum(nuclear_density[mask_left, 1])
+    
+    # upper right
+    out[3] = np.sum(nuclear_density[mask_right, 0])
+    
+    return out
+
+def _parse_scatter_adiabatic(
+    nuclear_density: ArrayLike,
+    mask_left: ArrayLike,
+    mask_right: ArrayLike,
+) -> ArrayLike:
+    out = np.zeros(4, dtype=np.float64)
+    
+    # lower left
+    out[0] = np.sum(nuclear_density[mask_left, 0])
+    
+    # lower right
+    out[1] = np.sum(nuclear_density[mask_right, 0])
+    
+    # upper left
+    out[2] = np.sum(nuclear_density[mask_left, 1])
+    
+    # upper right
+    out[3] = np.sum(nuclear_density[mask_right, 1])
+    
+    return out
+    

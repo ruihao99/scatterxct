@@ -1,3 +1,4 @@
+# %%
 import numpy as np
 from joblib import Parallel, delayed
 
@@ -66,7 +67,7 @@ def run_single_tullyone(
         dt=dt,
         initial_state=0,
         save_every=10,
-        movie_path=dir_movie
+        movie_path=dir_movie,
     )
     
 
@@ -112,47 +113,70 @@ def main(
             diab_populations=np.array(out['diab_populations']),
             adiab_populations=np.array(out['adiab_populations']),
             KE=out['KE'],
-            PE=out['PE'],
-            scatter_out_diab=np.array(out['scatter_out_diab']),
-            scatter_out_adiab=np.array(out['scatter_out_adiab'])
+            PE=out['PE']
         )
+        
+def plot_nuclear_dynamics(output: dict):
+    import matplotlib.pyplot as plt
+    time = output['time']
+    R = np.array(output['R'])
+    P = np.array(output['k'])
+    diab_populations = np.array(output['diab_populations'])
+    
+    nstates = diab_populations.shape[1]
+    
+    fig = plt.figure(figsize=(4*2, 3), dpi=300)
+    gs = fig.add_gridspec(1, 2)
+    axs = gs.subplots().flatten()
+    
+    ax = axs[0]
+    for ii in range(nstates):
+        ax.plot(time, R[:, ii], label=f"Diabatic State {ii+1}")
+    ax.plot(time, np.sum(R * diab_populations, axis=1), label="Averaged")
+    ax.set_xlabel("Time (a.u.)")
+    ax.set_ylabel("R (a.u.)")
+    ax.legend()
+    
+    ax = axs[1]
+    for ii in range(nstates):
+        ax.plot(time, P[:, ii], label=f"Diabatic State {ii+1}")
+    ax.plot(time, np.sum(P * diab_populations, axis=1), label="Averaged")
+    ax.set_xlabel("Time (a.u.)")
+    ax.set_ylabel("P (a.u.)")
+    ax.legend()
+    
+    fig.tight_layout()
+    plt.show()
+    
+    
     
 # %%
 if __name__ == "__main__":
-    argparser = argparse.ArgumentParser()
-    # argparser.add_argument("--Omega", type=float)
-    # argparser.add_argument("--tau", type=float)
-    # argparser.add_argument("--pulse_type", type=int)
-    argparser.add_argument("Omega", type=float)
-    argparser.add_argument("tau", type=float)
-    argparser.add_argument("pulse_type", type=int)
-    
-    # if the user does not provide the Omega and tau, then complain and throw an error
-    parsed_args = argparser.parse_args()
-
-    # if len(parsed_args) != 3:
-    #     raise ValueError("Please provide the Omega and tau.")
     
     
-    Omega = parsed_args.Omega
-    tau = parsed_args.tau
-    _pulse_type = parsed_args.pulse_type
-    if _pulse_type == 1:
-        pulse_type = TullyOnePulseTypes.PULSE_TYPE1
-    elif _pulse_type == 2:
-        pulse_type = TullyOnePulseTypes.PULSE_TYPE2
-    elif _pulse_type == 3:
-        pulse_type = TullyOnePulseTypes.PULSE_TYPE3
-    elif _pulse_type == 0:
-        pulse_type = TullyOnePulseTypes.NO_PULSE
-    else:
-        raise ValueError(f"Unknown pulse type {_pulse_type=}")
-
-    NSAMPLES = 48
+    # Omega = parsed_args.Omega
+    # tau = parsed_args.tau
+    # _pulse_type = parsed_args.pulse_type
+    Omega = 0.01
+    tau = 120
+    pulse_type = TullyOnePulseTypes.PULSE_TYPE3
     
-    main(
-        n_momentum_samples=NSAMPLES,
-        Omega=Omega,
-        tau=tau,
-        pulse_type=pulse_type, 
+    R0 = -10.0
+    k0 = 8.5
+    
+    project_path = Path("./data_test_statistics")
+    project_path.mkdir(parents=True, exist_ok=True)
+    
+    out = run_single_tullyone(
+        R0, k0, pulse_type, Omega, tau, save_movie=True, project_dir=project_path
     )
+    
+# %%
+if __name__ == "__main__":
+    plot_nuclear_dynamics(out)
+    
+
+# %%
+out['scatter_out_adiab']
+
+# %%

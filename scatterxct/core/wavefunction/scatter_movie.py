@@ -5,8 +5,23 @@ from matplotlib.animation import FuncAnimation
 
 import matplotlib.pyplot as plt
 
+from enum import Enum
+
+class StateRepresentation(Enum):
+    DIABATIC = 0
+    ADIABATIC = 1
+
 class ScatterMovie:
-    def __init__(self, R: ArrayLike, ):
+    def __init__(self, R: ArrayLike, state_representation: int = 1):
+        if state_representation == 0:
+            self.state_representation = StateRepresentation.DIABATIC
+            self.ylabel = "Diabatic States Nuclear Probability Density"
+        elif state_representation == 1:
+            self.state_representation = StateRepresentation.ADIABATIC
+            self.ylabel = "Adiabatic States Nuclear Probability Density"
+        else:
+            raise ValueError("state_representation must be 0 or 1")
+            
         self.R = R
         self.fig, self.ax = plt.subplots(dpi=250,)
         self.axtwinx = self.ax.twinx()
@@ -19,10 +34,13 @@ class ScatterMovie:
     def get_adiabatic_energy_levels(self, H: ArrayLike) -> ArrayLike:
         nstates, _, ngrid = H.shape
         E = np.zeros((nstates, ngrid), dtype=np.float64)
-        for ii in range(ngrid):
-            H_ii = H[:, :, ii]
-            evals, _ = LA.eigh(H_ii)
-            E[:, ii] = evals
+        if self.state_representation == StateRepresentation.DIABATIC:
+            E[:, :] = np.diagonal(H, axis1=0, axis2=1).T
+        else:
+            for ii in range(ngrid):
+                H_ii = H[:, :, ii]
+                evals, _ = LA.eigh(H_ii)
+                E[:, ii] = evals
         return E
     
         
@@ -33,7 +51,7 @@ class ScatterMovie:
         
     def add_labels(self, ) -> None: 
         self.ax.set_xlabel("R (a.u.)")
-        self.ax.set_ylabel("Nuclear Probability Density")
+        self.ax.set_ylabel(self.ylabel) 
         self.fig.legend(
             handles=self.ax.lines, 
             labels=[f"State {ii}" for ii in range(self.frames[0].shape[1])], 
