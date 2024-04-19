@@ -1,39 +1,25 @@
 import numpy as np
+from scipy.interpolate import interp1d
 
-from pymddrive.models.tullyone import get_tullyone, TullyOnePulseTypes
-from pymddrive.integrators.state import State
-from pymddrive.dynamics.options import BasisRepresentation, QunatumRepresentation, NonadiabaticDynamicsMethods, NumericalIntegrators    
-from pymddrive.dynamics import NonadiabaticDynamics, run_nonadiabatic_dynamics 
+from scatterxct.models.tullyone import TullyOnePulseTypes
 
+import os
 
-def estimate_delay_time_tullyone(R0, P0, mass: float=2000.0):
-    # model = TullyOne(A, B, C, D)
-    hamiltonian = get_tullyone(
-        pulse_type=TullyOnePulseTypes.NO_PULSE
+def get_tully_one_delay_time(R0: float, P0: float, ) -> float:
+    import pymddrive
+    
+    if R0 != -10.0:
+        raise ValueError("Only R0 = -10.0 is supported at the moment.")
+    
+    base = os.path.dirname(pymddrive.__path__[0])
+    
+    tully_one_delay_time_tabulate = os.path.join(
+        base, 'tabulate', 'tully_one_delay_time.txt'
     )
-    print(f"{R0=}")
-    print(f"{P0=}")
-    rho0 = np.array([[1.0, 0], [0, 0.0]], dtype=np.complex128)
-    s0 = State.from_variables(R=R0, P=P0, rho=rho0)
-    dyn = NonadiabaticDynamics(
-        hamiltonian=hamiltonian,
-        t0=0.0,
-        s0=s0,
-        mass=mass,
-        basis_rep=BasisRepresentation.Diabatic,
-        qm_rep=QunatumRepresentation.DensityMatrix,
-        solver=NonadiabaticDynamicsMethods.EHRENFEST,
-        numerical_integrator=NumericalIntegrators.ZVODE,
-        dt=1,
-        save_every=1
-    )
-    def stop_condition(t, s, states):
-        r, p, _ = s.get_variables()
-        return (r>0.0) or (p<0.0)
-    break_condition = lambda t, s, states: False
-    res = run_nonadiabatic_dynamics(dyn, stop_condition, break_condition)
-    return res['time'][-1]
-
+    P0_tab, delay_tab = np.loadtxt(tully_one_delay_time_tabulate, unpack=True)
+    interp_func = interp1d(P0_tab, delay_tab, kind='cubic')
+    return interp_func(P0)
+ 
 def linspace_log10(start, stop, num=50):
     return np.power(10, np.linspace(np.log10(start), np.log10(stop), num))
 
@@ -49,7 +35,7 @@ def get_tullyone_p0_list(nsamples: int, pulse_type: TullyOnePulseTypes=TullyOneP
         p0_bounds_0 = (2.0, 12.0); n_bounds_0 = nsamples // 2
         p0_bounds_1 = (13, 35); n_bounds_1 = nsamples - n_bounds_0
     elif pulse_type.value == TullyOnePulseTypes.PULSE_TYPE1.value or pulse_type.value == TullyOnePulseTypes.PULSE_TYPE2.value:
-        p0_bounds_0 = (0.5, 19); n_bounds_0 = nsamples // 3 * 2
+        p0_bounds_0 = (2.0, 19); n_bounds_0 = nsamples // 3 * 2
         p0_bounds_1 = (20, 35); n_bounds_1 = nsamples - n_bounds_0
 
     p0_segment_0 = sample_sigmoid(*p0_bounds_0, n_bounds_0)

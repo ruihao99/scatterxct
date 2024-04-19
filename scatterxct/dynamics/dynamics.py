@@ -17,7 +17,8 @@ class ScatterXctDynamics:
         initial_state: int = 0, # initial state, defaults to the ground state
         dt: float = 0.1,   # time step
         mass: float = 2000.0, # mass of the particle, defaults to that of the tully models
-        basis_representation: BasisRepresentation = BasisRepresentation.Diabatic
+        basis_representation: BasisRepresentation = BasisRepresentation.Diabatic,
+        scale: float = 1.0, # scale the number of grid points
     )-> None:
         """The abstract method for initializing the dynamics."""
         self.hamiltonian = hamiltonian
@@ -30,7 +31,7 @@ class ScatterXctDynamics:
         self._parse_options(hamiltonian, basis_representation)
         
         # get the discretization 
-        self.discretization = self._get_descretization()
+        self.discretization = self._get_descretization(scale=scale)
         
         # get the propagator
         if self.basis_representation == BasisRepresentation.Diabatic:
@@ -61,9 +62,9 @@ class ScatterXctDynamics:
         # parse the basis representation for the problem
         self.basis_representation = basis_representation
         
-    def _get_descretization(self,) -> Discretization:
+    def _get_descretization(self, scale: float = 1.0) -> Discretization:
         discretization = Discretization.from_diabatic_potentials(
-            R0=self.R0, k0=self.k0, mass=self.mass, dt=self.dt
+            R0=self.R0, k0=self.k0, mass=self.mass, dt=self.dt, scale=scale
         )
         return discretization
     

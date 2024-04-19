@@ -14,13 +14,13 @@ class Discretization:
     dt: float 
     
     @classmethod
-    def from_diabatic_potentials(cls, R0: float, k0: float, mass: float, dt: float, scatter_region_center: float=0.0) -> "Discretization":
+    def from_diabatic_potentials(cls, R0: float, k0: float, mass: float, dt: float, scatter_region_center: float=0.0, scale: float=1) -> "Discretization":
         R_lims, n_real_space_grid = estimate_R_lims(
             R0=R0, k0=k0, scatter_region_center=scatter_region_center
         )
         
-        n: int = n_real_space_grid
-        R = np.linspace(R_lims[0], R_lims[1], n)
+        n: int = int(n_real_space_grid * scale)
+        R = np.linspace(R_lims[0]*scale, R_lims[1]*scale, n)
         delta_R = R[1] - R[0]
         k = fftfreq(n, d=delta_R) * 2 * np.pi
         # H = np.array(

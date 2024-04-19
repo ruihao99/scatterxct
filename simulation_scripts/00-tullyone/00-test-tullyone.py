@@ -3,9 +3,9 @@ import numpy as np
 
 from scatterxct.dynamics.run import run_time_independent_dynamics
 from scatterxct.models.tullyone import get_tullyone, TullyOnePulseTypes
+from utils import get_tully_one_delay_time
 
-from utils import estimate_delay_time_tullyone
-
+from pathlib import Path
 from typing import Optional
 
 def estimate_dt(Omega: float, dt: float = 0.1) -> float:
@@ -26,7 +26,7 @@ def main(
 ):
     # estimate the delay time using MQC dynamics 
     if pulse_type != TullyOnePulseTypes.NO_PULSE:
-        delay_time = estimate_delay_time_tullyone(R0, k0)
+        delay_time = get_tully_one_delay_time(R0, k0)
     
     # get the hamiltonian
     if pulse_type == TullyOnePulseTypes.NO_PULSE:
@@ -41,8 +41,9 @@ def main(
         
     # estimate the time step
     dt = 0.1 if Omega is None else estimate_dt(Omega)
+    scale = 2.0
     
-    fname_movie: str = f"./scatter_movie-k0_{k0}.gif" 
+    fname_movie: Path = Path(f"./scatter_movie-k0_{k0}.gif")
     
     output = run_time_independent_dynamics(
         hamiltonian=hamiltonian,
@@ -52,7 +53,9 @@ def main(
         initial_state=0,
         save_every=10,
         # fname_movie=fname_movie
-        fname_movie=None
+        # fname_movie=None
+        movie_path=fname_movie,
+        scale=scale
     )
     
     return output
@@ -60,7 +63,7 @@ def main(
 # %%
 if __name__ == "__main__":
     R0 = -10.0
-    k0 = 5.0
+    k0 = 8.0
     Omega = 0.3
     tau = 100.0
     

@@ -47,6 +47,7 @@ def run_time_independent_dynamics(
     save_every: int=10,
     movie_every: int=1000,
     movie_path: Optional[Path]=None,
+    scale: float=1.0,
 ):
     """Run the time-independent dynamics."""
     dynamics = ScatterXctDynamics(
@@ -57,14 +58,15 @@ def run_time_independent_dynamics(
         dt=dt,
         mass=mass,
         basis_representation=basis_representation,
+        scale=scale
     )
     scatter_R_lims: Optional[Tuple[float, float]] = None
     a = estimate_a_from_k0(k0)
     if k0 > 0:
         # scatter from the right to the left
-        scatter_R_lims = (R0, -R0)
+        scatter_R_lims = (R0*scale, -R0*scale)
     elif k0 < 0:
-        scatter_R_lims = (-R0, R0)
+        scatter_R_lims = (-R0*scale, R0*scale)
     else:
         raise ValueError("The initial momentum should not be zero.")
 
