@@ -36,6 +36,7 @@ def potential_propagate(
 ) -> WaveFunctionData:
     # technical note: WavefunctionData is an immutable dataclass
     # (more details explained in the kinetic_propagate function)
+    # output = np.einsum("jki,ik->ij", V_propagator, psi_data.psi)
     output = np.einsum("jki,ik->ij", V_propagator, psi_data.psi)
     # psi_data.psi[:] = np.einsum("jki,ik->ij", V_propagator, psi_data.psi)
     psi_data.psi[:] = output

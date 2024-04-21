@@ -40,8 +40,8 @@ def main(
         )
         
     # estimate the time step
-    dt = 0.1 if Omega is None else estimate_dt(Omega)
-    scale = 2.0
+    dt = 0.05 if Omega is None else estimate_dt(Omega)
+    scale = 1.0
     
     fname_movie: Path = Path(f"./scatter_movie-k0_{k0}.gif")
     
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     fig = plt.figure(dpi=300)
     ax = fig.add_subplot(111)
     ax.plot(time, KE, label="KE")   
-    ax.plot(time, np.nansum(KE*diab_populations, axis=1), label="KE total")
+    # ax.plot(time, np.nansum(KE*diab_populations, axis=1), label="KE total")
     # ax.plot(time, np.sum(k, axis=1)**2/2000, label="KE alt")
     
     ax.set_xlabel("time (a.u.)")    
@@ -138,7 +138,7 @@ if __name__ == "__main__":
     
     fig = plt.figure(dpi=300)
     ax = fig.add_subplot(111)
-    ax.plot(time, np.sum(PE*diab_populations, axis=1), label="PE")
+    # ax.plot(time, np.sum(PE*diab_populations, axis=1), label="PE")
     ax.plot(time, PE, label="PE")
     ax.set_xlabel("time (a.u.)")
     ax.set_ylabel("PE")
@@ -146,7 +146,8 @@ if __name__ == "__main__":
     plt.show()
     
     
-    TE = np.nansum((KE + PE) * diab_populations, axis=1)
+    # TE = np.nansum((KE + PE) * diab_populations, axis=1)
+    TE = KE + PE 
     fig = plt.figure(dpi=300)
     ax = fig.add_subplot(111)
     ax.plot(time, TE, label="TE")

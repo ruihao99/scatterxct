@@ -38,13 +38,15 @@ def evaluate_properties(
     dR: float = discretization.dR
     k: ArrayLike = discretization.k
     mass: float = discretization.mass
-    E: ArrayLike = propagator.E
+    # E: ArrayLike = propagator.E
     U: ArrayLike = propagator.U
+    H: ArrayLike = propagator.H
+    KE: ArrayLike = propagator.KE
     
     # calculate the expected values in real space
     psi_R: ArrayLike = wavefunction_data.psi
     expected_R = calculate_mean_R(psi_R, R, dR)
-    expected_PE = calculate_PE(psi_R, E, U, dR)
+    expected_PE = calculate_PE(psi_R, H, dR)
     diab_populations = calculate_populations(psi_R, dR)
     adiab_populations = calculate_other_populations(psi_R, U, dR)
     
@@ -53,7 +55,8 @@ def evaluate_properties(
     wavefunction_data.real_space_to_k_space()
     psi_k: ArrayLike = wavefunction_data.psi
     expected_k = calculate_mean_k(psi_k, k, dR)
-    expected_KE = calculate_KE(psi_k, k, dR, mass)
+    # expected_KE = calculate_KE(psi_k, k, dR, mass)
+    expected_KE = calculate_KE(psi_k, KE, dR)
     wavefunction_data.k_space_to_real_space()
     
     return ScatterXctProperties(

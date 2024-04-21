@@ -35,6 +35,7 @@ class Propagator(PropagatorBase):
     H: NDArray[np.complex128] # The total Hamiltonian (value reference frozen)
     E: NDArray[np.float64] # The eigenvalues of the Hamiltonian (value reference frozen)
     U: NDArray[np.complex128] # The eigenvectors of the Hamiltonian (value reference frozen)
+    KE: NDArray[np.float64] # The kinetic energy of the Hamiltonian (value reference frozen)
     T_propagator: NDArray[np.complex128] # The kinetic energy propagator for dt (reference frozen)
     V_propagator: NDArray[np.complex128] # The potential energy propagator for dt (reference frozen)
     half_T_propagator: NDArray[np.complex128] # The kinetic energy propagator for dt/2 (reference frozen)
@@ -45,13 +46,13 @@ class Propagator(PropagatorBase):
         if not isinstance(self.dt, (int, float)):
             raise TypeError("The time step should be a real number.")
         
-        shape_T = self.T_propagator.shape
-        shape_half_T = self.half_T_propagator.shape
+        # shape_T = self.T_propagator.shape
+        # shape_half_T = self.half_T_propagator.shape
         
-        if shape_T != shape_half_T:
-            raise ValueError("The T_propagator and half_T_propagator have incompatible shapes")
-        if self.T_propagator.ndim != 1:
-            raise ValueError("The T_propagator should be a 1D array")
+        # if shape_T != shape_half_T:
+        #     raise ValueError("The T_propagator and half_T_propagator have incompatible shapes")
+        # if self.T_propagator.ndim != 1:
+        #     raise ValueError("The T_propagator should be a 1D array")
        
         shape_V = self.V_propagator.shape
         shape_half_V = self.half_V_propagator.shape
@@ -77,8 +78,9 @@ class Propagator(PropagatorBase):
         
         # Create the kinetic energy propagator
         k = discretization.k
-        T_propagator = np.exp(-1j * k**2 * dt / (2 * mass))
-        half_T_propagator = np.exp(-1j * k**2 * dt / (4 * mass))
+        KE = k**2/(2 * mass)
+        T_propagator = np.exp(-1j * KE * dt)
+        half_T_propagator = np.exp(-1j * KE * dt / 2)
         
         # Create the potential energy propagator
         R = discretization.R
@@ -99,6 +101,7 @@ class Propagator(PropagatorBase):
             H=H, 
             E=E, 
             U=U, 
+            KE=KE,
             T_propagator=T_propagator, 
             V_propagator=V_propagator, 
             half_T_propagator=half_T_propagator, 

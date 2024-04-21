@@ -1,6 +1,6 @@
 # %%
 import numpy as np
-from numba import jit
+from numba import njit
 from numpy.typing import ArrayLike
 import scipy.linalg as LA
 
@@ -68,44 +68,63 @@ def _trace_electronic(psi: ArrayLike, operator: ArrayLike, out: ArrayLike) -> Ar
         out[ii] = np.trace(np.dot(rho, operator[:, :, ii])).real
     return out
 
-def calculate_mean_R(psi_R: ArrayLike, R: ArrayLike, dR: float) -> ArrayLike:
-    """The mean position for each state.
+@njit
+def calculate_mean_R(psi_R: ArrayLike, R: ArrayLike, dR: float) -> float:
+    psi_ii = np.zeros((psi_R.shape[1], ), dtype=np.complex128)
+    mean_R: float = 0.0
+    for ii in range(psi_R.shape[0]):
+        psi_ii[:] = psi_R[ii, :]
+        mean_R += np.real(np.dot(psi_ii.conj(), psi_ii)) * R[ii] * dR
+    return mean_R
 
-    Args:
-        psi (ArrayLike): the real space wavefunction with shape: (ngrid, nstates)
-        R (ArrayLike): the real space grid
+# def calculate_mean_R(psi_R: ArrayLike, R: ArrayLike, dR: float) -> ArrayLike:
+#     """The mean position for each state.
+# 
+#     Args:
+#         psi (ArrayLike): the real space wavefunction with shape: (ngrid, nstates)
+#         R (ArrayLike): the real space grid
+# 
+#     Returns:
+#         ArrayLike: the mean position for each state [shape: (nstates,)]
+#     """
+#     prob: ArrayLike = get_nuclear_density(psi_R, dR)
+#     normalization: ArrayLike = np.sum(prob, axis=0)
+#     expval_R: ArrayLike = np.tensordot(prob, R, axes=(0, 0))
+#     THRESHOLD: float = 1e-10
+#     mask: ArrayLike = normalization < THRESHOLD
+#     expval_R[mask] = np.nan
+#     expval_R[~mask] /= normalization[~mask]
+#     return expval_R
 
-    Returns:
-        ArrayLike: the mean position for each state [shape: (nstates,)]
-    """
-    prob: ArrayLike = get_nuclear_density(psi_R, dR)
-    normalization: ArrayLike = np.sum(prob, axis=0)
-    expval_R: ArrayLike = np.tensordot(prob, R, axes=(0, 0))
-    THRESHOLD: float = 1e-10
-    mask: ArrayLike = normalization < THRESHOLD
-    expval_R[mask] = np.nan
-    expval_R[~mask] /= normalization[~mask]
-    return expval_R
+@njit
+def calculate_mean_k(psi_k: ArrayLike, k: ArrayLike, dR: float) -> float:
+    psi_ii = np.zeros((psi_k.shape[1], ), dtype=np.complex128)
+    mean_k: float = 0.0
+    for ii in range(psi_k.shape[0]):
+        psi_ii[:] = psi_k[ii, :]
+        mean_k += np.real(np.dot(psi_ii.conj(), psi_ii)) * k[ii] * dR
+    return mean_k
 
-def calculate_mean_k(psi_k: ArrayLike, k: ArrayLike, dR: float) -> ArrayLike:
-    """The mean momentum for each state.
 
-    Args:
-        psi (ArrayLike): the k space wavefunction with shape: (ngrid, nstates)
-        k (ArrayLike): the k space grid
-        dR (float): the R space grid spacing
-
-    Returns:
-        ArrayLike: the mean momentum for each state [shape: (nstates,)]
-    """
-    prob: ArrayLike = get_nuclear_density(psi_k, dR)
-    normalization: ArrayLike = np.sum(prob, axis=0)
-    expval_k: ArrayLike = np.tensordot(prob, k, axes=(0, 0))
-    THRESHOLD: float = 1e-10
-    mask: ArrayLike = normalization < THRESHOLD
-    expval_k[mask] = np.nan
-    expval_k[~mask] /= normalization[~mask]
-    return expval_k
+# def calculate_mean_k(psi_k: ArrayLike, k: ArrayLike, dR: float) -> ArrayLike:
+#     """The mean momentum for each state.
+# 
+#     Args:
+#         psi (ArrayLike): the k space wavefunction with shape: (ngrid, nstates)
+#         k (ArrayLike): the k space grid
+#         dR (float): the R space grid spacing
+# 
+#     Returns:
+#         ArrayLike: the mean momentum for each state [shape: (nstates,)]
+#     """
+#     prob: ArrayLike = get_nuclear_density(psi_k, dR)
+#     normalization: ArrayLike = np.sum(prob, axis=0)
+#     expval_k: ArrayLike = np.tensordot(prob, k, axes=(0, 0))
+#     THRESHOLD: float = 1e-10
+#     mask: ArrayLike = normalization < THRESHOLD
+#     expval_k[mask] = np.nan
+#     expval_k[~mask] /= normalization[~mask]
+#     return expval_k
 
 def calculate_populations(psi: ArrayLike, dR: float) -> ArrayLike:
     """The population for each state.
@@ -144,64 +163,93 @@ def _calculate_other_populations(psi: ArrayLike, psi_other_rep: ArrayLike, U: Ar
         psi_other_rep[ii, :] = psi_tmp[:]
     return psi_other_rep
 
+@njit
+def calculate_KE(
+    psi_k: ArrayLike,
+    KE: ArrayLike,
+    dR: float,
+) -> float:
+    psi_ii = np.zeros((psi_k.shape[1], ), dtype=np.complex128)
+    KE_out: float = 0.0
+    for ii in range(psi_k.shape[0]):
+        psi_ii[:] = psi_k[ii, :]
+        KE_out += np.real(np.dot(psi_ii.conj(), psi_ii)) * KE[ii] * dR
+    return KE_out
+    
 
-def calculate_KE(psi_k: ArrayLike, k: ArrayLike, dR: float, mass: float) -> ArrayLike:
-    """The kinetic energy for each state.
+# def calculate_KE(psi_k: ArrayLike, k: ArrayLike, dR: float, mass: float) -> ArrayLike:
+#     """The kinetic energy for each state.
+# 
+#     Args:
+#         psi (ArrayLike): the k space wavefunction with shape: (ngrid, nstates)
+#         k (ArrayLike): the k space grid
+#         dR (float): the R space grid spacing
+#         mass (float): the mass of the particle
+# 
+#     Returns:
+#         ArrayLike: the kinetic energy for each state [shape: (nstates,)]
+#     """
+#     # return state_specific_expected_values(psi_k, k**2 / (2 * mass), dR)
+#     prob: ArrayLike = get_nuclear_density(psi_k, dR)    
+#     normalization: ArrayLike = np.sum(prob, axis=0)
+#     expval_KE: ArrayLike = np.tensordot(prob, k**2 / (2 * mass), axes=(0, 0))
+#     THRESHOLD: float = 1e-10
+#     mask: ArrayLike = normalization < THRESHOLD
+#     expval_KE[mask] = np.nan
+#     expval_KE[~mask] /= normalization[~mask]
+#     return expval_KE
 
-    Args:
-        psi (ArrayLike): the k space wavefunction with shape: (ngrid, nstates)
-        k (ArrayLike): the k space grid
-        dR (float): the R space grid spacing
-        mass (float): the mass of the particle
-
-    Returns:
-        ArrayLike: the kinetic energy for each state [shape: (nstates,)]
-    """
-    # return state_specific_expected_values(psi_k, k**2 / (2 * mass), dR)
-    prob: ArrayLike = get_nuclear_density(psi_k, dR)    
-    normalization: ArrayLike = np.sum(prob, axis=0)
-    expval_KE: ArrayLike = np.tensordot(prob, k**2 / (2 * mass), axes=(0, 0))
-    THRESHOLD: float = 1e-10
-    mask: ArrayLike = normalization < THRESHOLD
-    expval_KE[mask] = np.nan
-    expval_KE[~mask] /= normalization[~mask]
-    return expval_KE
-
+@njit
 def calculate_PE(
-    psi_R: ArrayLike, 
-    E: ArrayLike,
-    U: ArrayLike,
-    dR: float, 
-) -> ArrayLike:
-    """The potential energy for each state.
+    psi_R: ArrayLike,
+    H: ArrayLike,
+    dR: float,
+) -> float:
+    psi_ii = np.zeros((psi_R.shape[1], ), dtype=np.complex128)
+    H_ii = np.zeros((H.shape[0], H.shape[1]), dtype=np.complex128)
+    PE: float = 0.0
+    for ii in range(psi_R.shape[0]):
+        H_ii[:] = np.ascontiguousarray(H[:, :, ii])
+        psi_ii[:] = psi_R[ii, :]
+        PE += np.dot(psi_ii.conj(), np.dot(H_ii, psi_ii)).real * dR
+    return PE
+    
 
-    Args:
-        psi (ArrayLike): the real space wavefunction with shape: (ngrid, nstates)
-        V (ArrayLike): the potential energy with shape: (ngrid, nstates)
-        dR (float): the real space grid spacing
-
-    Returns:
-        ArrayLike: the potential energy for each state [shape: (nstates,)]
-    """
-    nuc_prob: ArrayLike = get_nuclear_density(psi_R, dR)
-    normalization: ArrayLike = np.sum(nuc_prob, axis=0)
-    mask: ArrayLike = normalization < 1e-10
-    
-    ngrid, nstates = psi_R.shape
-    
-    psi_ij: ArrayLike = np.zeros((nstates, ), dtype=np.complex128) 
-    expval_E: ArrayLike = np.zeros_like(E) 
-    for ii in range(ngrid):
-        evals, evecs = E[:, ii], U[:, :, ii]
-        for jj in range(nstates):
-            psi_ij[:] = 0
-            psi_ij[jj] = psi_R[ii, jj] 
-            expval_E[jj, ii] = np.dot(evals, np.abs(np.dot(evecs.conj().T, psi_ij))**2).real * dR
-    
-    expval_E = np.sum(expval_E, axis=1) 
-    expval_E[mask] = np.nan
-    expval_E[~mask] /= normalization[~mask] 
-    return expval_E
+# def calculate_PE(
+#     psi_R: ArrayLike, 
+#     E: ArrayLike,
+#     U: ArrayLike,
+#     dR: float, 
+# ) -> ArrayLike:
+#     """The potential energy for each state.
+# 
+#     Args:
+#         psi (ArrayLike): the real space wavefunction with shape: (ngrid, nstates)
+#         V (ArrayLike): the potential energy with shape: (ngrid, nstates)
+#         dR (float): the real space grid spacing
+# 
+#     Returns:
+#         ArrayLike: the potential energy for each state [shape: (nstates,)]
+#     """
+#     nuc_prob: ArrayLike = get_nuclear_density(psi_R, dR)
+#     normalization: ArrayLike = np.sum(nuc_prob, axis=0)
+#     mask: ArrayLike = normalization < 1e-10
+#     
+#     ngrid, nstates = psi_R.shape
+#     
+#     psi_ij: ArrayLike = np.zeros((nstates, ), dtype=np.complex128) 
+#     expval_E: ArrayLike = np.zeros_like(E) 
+#     for ii in range(ngrid):
+#         evals, evecs = E[:, ii], U[:, :, ii]
+#         for jj in range(nstates):
+#             psi_ij[:] = 0
+#             psi_ij[jj] = psi_R[ii, jj] 
+#             expval_E[jj, ii] = np.dot(evals, np.abs(np.dot(evecs.conj().T, psi_ij))**2).real * dR
+#     
+#     expval_E = np.sum(expval_E, axis=1) 
+#     expval_E[mask] = np.nan
+#     expval_E[~mask] /= normalization[~mask] 
+#     return expval_E
 
 def psi_diabatic_to_adiabatic(
     psi_diabatic: ArrayLike,

@@ -32,7 +32,8 @@ def break_condition(psi: ArrayLike, R: ArrayLike, R_lims: Tuple[float, float]) -
     dR: float = R[1] - R[0]
     expected_R = expected_value(psi, R, dR)
     each_state_expected_R = calculate_mean_R(psi, R, dR)
-    return outside_boundary(expected_R, R_lims) or any(outside_boundary(expected_R, R_lims) for expected_R in each_state_expected_R)
+    # return outside_boundary(expected_R, R_lims) or any(outside_boundary(expected_R, R_lims) for expected_R in each_state_expected_R)
+    return outside_boundary(expected_R, R_lims) or outside_boundary(each_state_expected_R, R_lims) 
 
 def run_time_independent_dynamics(
     hamiltonian,
@@ -41,7 +42,7 @@ def run_time_independent_dynamics(
     initial_state: int=0, # defaults to the ground state
     dt: float=0.1,
     mass: float=2000.0,
-    split_operator_type: SplitOperatorType=SplitOperatorType.TVT,
+    split_operator_type: SplitOperatorType=SplitOperatorType.PLAIN,
     basis_representation: BasisRepresentation=BasisRepresentation.Diabatic,
     max_iter: int=int(1e6),
     save_every: int=10,
@@ -99,7 +100,7 @@ def run_time_independent_dynamics(
         R=discretization.R,
         state_representation=1
     )
-
+    
     for istep in range(max_iter):
         if istep % save_every == 0:
             if break_condition(dynamics.wavefunction_data.psi, dynamics.discretization.R, scatter_R_lims):
@@ -107,7 +108,6 @@ def run_time_independent_dynamics(
             tlist = np.append(tlist, time)
             properties: NamedTuple = evaluate_properties(discretization, propagator, wavefunction_data)
             output = append_properties(properties, output)
-            # print(f"{time=}, {properties.R=}")
         if (istep % movie_every == 0) and (diab_scatter_movie is not None):
             # we particularly want to save the wavepacket movie in the adiabatic representation
             # if dynamics.basis_representation == BasisRepresentation.Diabatic:
