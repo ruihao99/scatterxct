@@ -41,7 +41,7 @@ def main(
         
     # estimate the time step
     dt = 0.05 if Omega is None else estimate_dt(Omega)
-    scale = 1.0
+    scale = 2
     
     fname_movie: Path = Path(f"./scatter_movie-k0_{k0}.gif")
     
@@ -55,7 +55,8 @@ def main(
         # fname_movie=fname_movie
         # fname_movie=None
         movie_path=fname_movie,
-        scale=scale
+        scale=scale,
+        apply_absorbing_boundary=True
     )
     
     return output
@@ -63,7 +64,7 @@ def main(
 # %%
 if __name__ == "__main__":
     R0 = -10.0
-    k0 = 8.0
+    k0 = 10.0
     Omega = 0.3
     tau = 100.0
     

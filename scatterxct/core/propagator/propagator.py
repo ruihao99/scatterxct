@@ -8,6 +8,7 @@ from scatterxct.models.nonadiabatic_hamiltonian import HamiltonianBase
 from scatterxct.models.nonadiabatic_hamiltonian import adiabatic_to_diabatic
 
 from .propagator_base import PropagatorBase
+from .absorbing_boundary_condition import get_gamma
 
 from dataclasses import dataclass
 from typing import Optional
@@ -40,6 +41,7 @@ class Propagator(PropagatorBase):
     V_propagator: NDArray[np.complex128] # The potential energy propagator for dt (reference frozen)
     half_T_propagator: NDArray[np.complex128] # The kinetic energy propagator for dt/2 (reference frozen)
     half_V_propagator: NDArray[np.complex128] # The potential energy propagator for dt/2 (reference frozen)
+    gamma: NDArray[np.float64]
     
     def __post_init__(self):
         # Type checks for the time independent propagator
@@ -70,7 +72,13 @@ class Propagator(PropagatorBase):
                 raise ValueError(f"The V_propagator should be a 3D array of shape (nstates, nstates, ngrid). Got {shape_V}. Refused to initialize the DiabaticPropagator.")
     
     @classmethod
-    def from_discretization(cls, hamiltonian: HamiltonianBase, discretization: Discretization) -> "Propagator":
+    def from_discretization(
+        cls, 
+        hamiltonian: HamiltonianBase, 
+        discretization: Discretization,
+        U0: float=1.0,
+        alpha: float=0.2,
+    ) -> "Propagator":
         ngrid = discretization.ngrid
         nstates = hamiltonian.dim
         mass = discretization.mass
@@ -105,7 +113,8 @@ class Propagator(PropagatorBase):
             T_propagator=T_propagator, 
             V_propagator=V_propagator, 
             half_T_propagator=half_T_propagator, 
-            half_V_propagator=half_V_propagator
+            half_V_propagator=half_V_propagator,
+            gamma=get_gamma(U0, alpha, ngrid)
         )        
     
     def get_T_propagator(self, t: Optional[float]=None) -> NDArray[np.complex128]:
@@ -119,6 +128,9 @@ class Propagator(PropagatorBase):
     
     def get_half_V_propagator(self, t: float) -> NDArray[np.complex128]:
         return self.half_V_propagator
+    
+    def get_amplitude_reduction(self, ) -> NDArray[np.float64]:
+        return (1 - self.gamma * self.dt)[:, np.newaxis]
     
     @property
     def nstates(self) -> int:

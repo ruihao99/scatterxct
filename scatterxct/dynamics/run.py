@@ -49,6 +49,7 @@ def run_time_independent_dynamics(
     movie_every: int=1000,
     movie_path: Optional[Path]=None,
     scale: float=1.0,
+    apply_absorbing_boundary: bool=False,
 ):
     """Run the time-independent dynamics."""
     dynamics = ScatterXctDynamics(
@@ -101,9 +102,13 @@ def run_time_independent_dynamics(
         state_representation=1
     )
     
+    abs_boundary = propagator.get_amplitude_reduction()
+    
     for istep in range(max_iter):
         if istep % save_every == 0:
-            if break_condition(dynamics.wavefunction_data.psi, dynamics.discretization.R, scatter_R_lims):
+            # if break_condition(dynamics.wavefunction_data.psi, dynamics.discretization.R, scatter_R_lims):
+            #     break
+            if time >= 25000:
                 break
             tlist = np.append(tlist, time)
             properties: NamedTuple = evaluate_properties(discretization, propagator, wavefunction_data)
@@ -121,6 +126,9 @@ def run_time_independent_dynamics(
         time, wavefunction_data = propagate(
             time, wavefunction_data, propagator, split_operator_type
         )
+        if apply_absorbing_boundary:
+            wavefunction_data.psi[:] *= abs_boundary
+            
     # parse_the scatter results
     nuclear_density_diab: ArrayLike = get_nuclear_density(wavefunction_data.psi, discretization.dR)
     nuclear_density_adiab: ArrayLike = get_nuclear_density(wavefunction_data.get_psi_of_the_other_representation(U=propagator.U), discretization.dR)
