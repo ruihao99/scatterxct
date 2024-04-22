@@ -44,6 +44,7 @@ class TD_Propagator(PropagatorBase):
     R: NDArray[np.float64] # The real space grid (rvf)
     E: NDArray[np.float64] # The eigenvalues of the Hamiltonian (rvf)
     U: NDArray[np.complex128] # The eigenvectors of the Hamiltonian (rvf)
+    KE: NDArray[np.float64]
     T_propagator: NDArray[np.complex128] # The kinetic energy propagator for dt (rf)
     V_propagator: NDArray[np.complex128] # The potential energy propagator for dt (rf)
     half_T_propagator: NDArray[np.complex128] # The kinetic energy propagator for dt/2 (rf)
@@ -90,8 +91,9 @@ class TD_Propagator(PropagatorBase):
         
         # Create the kinetic energy propagator
         k = discretization.k
-        T_propagator = np.exp(-1j * k**2 * dt / (2 * mass))
-        half_T_propagator = np.exp(-1j * k**2 * dt / (4 * mass))
+        KE = 0.5 * mass * k**2
+        T_propagator = np.exp(-1j * KE * dt)
+        half_T_propagator = np.exp(-1j * KE * dt / 2)
         
         # Create the potential energy propagator
         R:NDArray[np.float64] = discretization.R.copy()
@@ -111,6 +113,7 @@ class TD_Propagator(PropagatorBase):
             R=R,
             E=np.zeros((nstates, ngrid), dtype=np.float64),
             U=np.zeros((nstates, nstates, ngrid), dtype=np.complex128),
+            KE=KE,
             T_propagator=T_propagator,
             V_propagator=V_propagator,
             half_T_propagator=half_T_propagator,

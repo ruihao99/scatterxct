@@ -102,14 +102,15 @@ def run_time_independent_dynamics(
         state_representation=1
     )
     
-    abs_boundary = propagator.get_amplitude_reduction()
+    if apply_absorbing_boundary:    
+        abs_boundary = propagator.get_amplitude_reduction()
     
     for istep in range(max_iter):
         if istep % save_every == 0:
-            # if break_condition(dynamics.wavefunction_data.psi, dynamics.discretization.R, scatter_R_lims):
-            #     break
-            if time >= 25000:
+            if break_condition(dynamics.wavefunction_data.psi, dynamics.discretization.R, scatter_R_lims):
                 break
+            # if time >= 25000:
+            #     break
             tlist = np.append(tlist, time)
             properties: NamedTuple = evaluate_properties(discretization, propagator, wavefunction_data)
             output = append_properties(properties, output)

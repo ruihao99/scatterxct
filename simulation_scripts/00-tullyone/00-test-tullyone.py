@@ -22,12 +22,13 @@ def main(
     k0: float = 30.0, 
     Omega: Optional[float] = None, 
     tau: Optional[float] = None,
+    phi: Optional[float] = None,
     pulse_type: TullyOnePulseTypes = TullyOnePulseTypes.NO_PULSE,
 ):
     # estimate the delay time using MQC dynamics 
     if pulse_type != TullyOnePulseTypes.NO_PULSE:
         delay_time = get_tully_one_delay_time(R0, k0)
-    
+        
     # get the hamiltonian
     if pulse_type == TullyOnePulseTypes.NO_PULSE:
         hamiltonian = get_tullyone(
@@ -35,13 +36,13 @@ def main(
         )
     else:
         hamiltonian = get_tullyone(
-            t0=delay_time, Omega=Omega, tau=tau, 
+            t0=delay_time, Omega=Omega, tau=tau, phi=phi,
             pulse_type=pulse_type
         )
         
     # estimate the time step
     dt = 0.05 if Omega is None else estimate_dt(Omega)
-    scale = 2
+    scale = 1.0
     
     fname_movie: Path = Path(f"./scatter_movie-k0_{k0}.gif")
     
@@ -56,7 +57,7 @@ def main(
         # fname_movie=None
         movie_path=fname_movie,
         scale=scale,
-        apply_absorbing_boundary=True
+        apply_absorbing_boundary=False
     )
     
     return output
@@ -67,9 +68,10 @@ if __name__ == "__main__":
     k0 = 10.0
     Omega = 0.3
     tau = 100.0
+    phi = 0.0
     
-    # output = main(R0, k0, Omega, tau, TullyOnePulseTypes.PULSE_TYPE3)
-    output = main(R0, k0, Omega, tau, TullyOnePulseTypes.NO_PULSE)
+    output = main(R0, k0, Omega, tau, phi, TullyOnePulseTypes.PULSE_TYPE3)
+    # output = main(R0, k0, Omega, tau, TullyOnePulseTypes.NO_PULSE)
 # %%
 if __name__ == "__main__":
     time = output['time']

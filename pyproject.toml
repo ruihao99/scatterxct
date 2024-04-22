@@ -1,0 +1,13 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "scatterxct"
+version = "0.0.1"
+authors = [
+  { name="Rui-Hao Bi", email="biruihao@westlake.edu.cn"},
+]
+description="A convenient package for Exact wavefunction solution to non-adiabatic scattering problem."
+readme = "README.md"
+requires-python = ">=3.11"
