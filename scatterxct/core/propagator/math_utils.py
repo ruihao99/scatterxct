@@ -1,6 +1,7 @@
 # %%
 import numpy as np
 import numpy.linalg as LA
+from scipy.linalg import expm
 from numpy.typing import NDArray
 from numba import jit
 
@@ -28,3 +29,11 @@ def get_diabatic_V_propagators(
         # V[:, :, ii] = np.dot(evecs, V[:, :, ii])
         E[:, ii], U[:, :, ii] = evals, evecs
     return V 
+
+def get_diabatic_V_propagators_expm(
+    H: NDArray[np.complex128], 
+    V: NDArray[np.complex128],
+    dt: float
+) -> NDArray[np.complex128]:
+    V[:] = expm(-1.0j * H.transpose(2, 0, 1) * dt).transpose(1, 2, 0)
+    return V

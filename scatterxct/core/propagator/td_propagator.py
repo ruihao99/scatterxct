@@ -8,7 +8,7 @@ from scatterxct.models.nonadiabatic_hamiltonian import HamiltonianBase, TD_Hamil
 from scatterxct.models.nonadiabatic_hamiltonian import adiabatic_to_diabatic
 
 from .propagator_base import PropagatorBase
-from .math_utils import get_diabatic_V_propagators
+from .math_utils import get_diabatic_V_propagators, get_diabatic_V_propagators_expm
 
 from dataclasses import dataclass
 from typing import Optional, Union
@@ -127,13 +127,15 @@ class TD_Propagator(PropagatorBase):
         return self.half_T_propagator
     
     def get_V_propagator(self, t: float) -> NDArray[np.complex128]:
-        self.update_hamiltonian(t)
-        get_diabatic_V_propagators(self.H, self.V_propagator, self.dt, self.E, self.U)
+        # self.update_hamiltonian(t)
+        # get_diabatic_V_propagators(self.H, self.V_propagator, self.dt, self.E, self.U)
+        get_diabatic_V_propagators_expm(self.H, self.half_V_propagator, self.dt)
         return self.V_propagator
     
     def get_half_V_propagator(self, t: Optional[float]=None) -> NDArray[np.complex128]:
-        self.update_hamiltonian(t)
-        get_diabatic_V_propagators(self.H, self.half_V_propagator, self.dt / 2, self.E, self.U)
+        # self.update_hamiltonian(t)
+        # get_diabatic_V_propagators(self.H, self.half_V_propagator, self.dt / 2, self.E, self.U)
+        get_diabatic_V_propagators_expm(self.H, self.half_V_propagator, self.dt/2)
         return self.half_V_propagator
     
     def update_hamiltonian(self, t: float) -> None:

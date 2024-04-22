@@ -42,7 +42,7 @@ def run_time_independent_dynamics(
     initial_state: int=0, # defaults to the ground state
     dt: float=0.1,
     mass: float=2000.0,
-    split_operator_type: SplitOperatorType=SplitOperatorType.PLAIN,
+    split_operator_type: SplitOperatorType=SplitOperatorType.VTV,
     basis_representation: BasisRepresentation=BasisRepresentation.Diabatic,
     max_iter: int=int(1e6),
     save_every: int=10,
