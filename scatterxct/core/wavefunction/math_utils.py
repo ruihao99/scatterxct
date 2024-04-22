@@ -77,6 +77,16 @@ def calculate_mean_R(psi_R: ArrayLike, R: ArrayLike, dR: float) -> float:
         mean_R += np.real(np.dot(psi_ii.conj(), psi_ii)) * R[ii] * dR
     return mean_R
 
+@njit
+def calculate_state_dependent_R(psi_R: ArrayLike, R: ArrayLike, dR: float) -> ArrayLike:
+    psi_jj = np.zeros((psi_R.shape[0], ), dtype=np.complex128)
+    R_out = np.zeros((psi_R.shape[1], ), dtype=np.float64)
+    for ii in range(psi_R.shape[1]):
+        psi_jj[:] = np.ascontiguousarray(psi_R[:, ii])
+        R_out[ii] = np.dot(psi_jj.conj(), R * psi_jj).real * dR
+    return R_out
+    
+
 # def calculate_mean_R(psi_R: ArrayLike, R: ArrayLike, dR: float) -> ArrayLike:
 #     """The mean position for each state.
 # 

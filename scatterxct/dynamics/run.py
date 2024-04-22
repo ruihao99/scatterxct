@@ -6,6 +6,7 @@ from scatterxct.core.wavefunction import calculate_mean_R, expected_value
 from scatterxct.core.wavefunction import ScatterMovie
 from scatterxct.core.wavefunction import get_nuclear_density
 from scatterxct.core.wavefunction.wavepacket import estimate_a_from_k0
+from scatterxct.core.wavefunction.math_utils import calculate_state_dependent_R
 
 from .dynamics import ScatterXctDynamics
 from .options import BasisRepresentation
@@ -31,9 +32,9 @@ def outside_boundary(expected_R: float, R_lims: Tuple[float, float]) -> bool:
 def break_condition(psi: ArrayLike, R: ArrayLike, R_lims: Tuple[float, float]) -> bool:
     dR: float = R[1] - R[0]
     expected_R = expected_value(psi, R, dR)
-    each_state_expected_R = calculate_mean_R(psi, R, dR)
-    # return outside_boundary(expected_R, R_lims) or any(outside_boundary(expected_R, R_lims) for expected_R in each_state_expected_R)
-    return outside_boundary(expected_R, R_lims) or outside_boundary(each_state_expected_R, R_lims) 
+    state_dependent_R = calculate_state_dependent_R(psi, R, dR)
+    return outside_boundary(expected_R, R_lims) or any(outside_boundary(expected_R, R_lims) for expected_R in state_dependent_R)
+    # return outside_boundary(expected_R, R_lims) or outside_boundary(each_state_expected_R, R_lims) 
 
 def run_time_independent_dynamics(
     hamiltonian,
@@ -109,7 +110,7 @@ def run_time_independent_dynamics(
         if istep % save_every == 0:
             if break_condition(dynamics.wavefunction_data.psi, dynamics.discretization.R, scatter_R_lims):
                 break
-            # if time >= 25000:
+            # if time >= 10000:
             #     break
             tlist = np.append(tlist, time)
             properties: NamedTuple = evaluate_properties(discretization, propagator, wavefunction_data)

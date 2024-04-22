@@ -9,6 +9,7 @@ from scatterxct.models.nonadiabatic_hamiltonian import adiabatic_to_diabatic
 
 from .propagator_base import PropagatorBase
 from .absorbing_boundary_condition import get_gamma
+from .math_utils import get_diabatic_V_propagators, diagonalization, get_diabatic_V_propagators_expm
 
 from dataclasses import dataclass
 from typing import Optional
@@ -95,15 +96,15 @@ class Propagator(PropagatorBase):
         # H = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
         dummy_t: float = 0.0 # dummy time for time-independent Hamiltonian
         H = hamiltonian.H(t=dummy_t, r=R, reduce_nuc=False)
-        E = np.zeros((nstates, ngrid), dtype=np.float64)
-        U = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
+        E, U = diagonalization(H)
         V_propagator = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
         half_V_propagator = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
-        for ii in range(ngrid):
-            H_ii = H[:, :, ii]
-            E[:, ii], U[:, :, ii] = LA.eigh(H_ii)
-            V_propagator[:, :, ii] = adiabatic_to_diabatic(np.diagflat(np.exp(-1j * E[:, ii] * dt)), U[:, :, ii])
-            half_V_propagator[:, :, ii] = adiabatic_to_diabatic(np.diagflat(np.exp(-1j * E[:, ii] * dt / 2)), U[:, :, ii])
+        
+        # get_diabatic_V_propagators(V_propagator, E, U, dt)
+        # get_diabatic_V_propagators(half_V_propagator, E, U, dt/2)
+        get_diabatic_V_propagators_expm(H=H, V=V_propagator, dt=dt)
+        get_diabatic_V_propagators_expm(H=H, V=half_V_propagator, dt=dt/2)
+        
         return cls(
             dt=dt, 
             H=H, 

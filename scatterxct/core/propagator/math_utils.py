@@ -5,29 +5,35 @@ from scipy.linalg import expm
 from numpy.typing import NDArray
 from numba import jit
 
+from typing import Tuple
+
+def diagonalization(
+    H: NDArray[np.complex128],
+) -> Tuple[NDArray[np.float64], NDArray[np.complex128]]:
+    E, U = LA.eigh(H.transpose(2, 0, 1))
+    return E.T, U.transpose(1, 2, 0)
+
 @jit(nopython=True)
 def get_diabatic_V_propagators(
-    H: NDArray[np.complex128], 
     V: NDArray[np.complex128], 
-    dt: float, 
     E: NDArray[np.float64], 
-    U: NDArray[np.complex128]
+    U: NDArray[np.complex128],
+    dt: float, 
 ) -> NDArray[np.complex128]:
     """Get the diabatic propagators for the diabatic representation.
 
     Returns:
         ArrayLike: the diabatic propagators
     """
-    _, _, ngrid = H.shape
-    V_ii = np.zeros((H.shape[0], H.shape[1]), dtype=np.complex128)
+    _, _, ngrid = V.shape
+    E_ii = np.zeros((E.shape[0],), dtype=np.complex128)
+    U_ii = np.zeros((U.shape[0], U.shape[1]), dtype=np.complex128)
+    V_ii = np.zeros((U.shape[0], U.shape[1]), dtype=np.complex128)
     for ii in range(ngrid):
-        Hii = H[:, :, ii]
-        evals, evecs = LA.eigh(Hii)
-        V_ii = np.dot(np.diagflat(np.exp(-1j * evals * dt)), evecs.conj().T)
-        V[:, :, ii] = np.dot(evecs, V_ii)
-        # V[:, :, ii] = np.dot(np.diagflat(np.exp(-1j * evals * dt)), evecs.conj().T)
-        # V[:, :, ii] = np.dot(evecs, V[:, :, ii])
-        E[:, ii], U[:, :, ii] = evals, evecs
+        E_ii[:] = np.ascontiguousarray(E[:, ii])
+        U_ii[:, :] = np.ascontiguousarray(U[:, :, ii])
+        V_ii[:, :] = np.dot(U_ii, np.diagflat(np.exp(-1j * E_ii * dt)))
+        V[:, :, ii] = np.dot(U_ii.conj().T, V_ii)
     return V 
 
 def get_diabatic_V_propagators_expm(

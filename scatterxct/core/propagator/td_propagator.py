@@ -1,14 +1,12 @@
 # %%
 import numpy as np
-from numba import jit
 from numpy.typing import NDArray
 
 from scatterxct.core.discretization import Discretization
 from scatterxct.models.nonadiabatic_hamiltonian import HamiltonianBase, TD_HamiltonianBase
-from scatterxct.models.nonadiabatic_hamiltonian import adiabatic_to_diabatic
 
 from .propagator_base import PropagatorBase
-from .math_utils import get_diabatic_V_propagators, get_diabatic_V_propagators_expm
+from .math_utils import get_diabatic_V_propagators, diagonalization, get_diabatic_V_propagators_expm
 
 from dataclasses import dataclass
 from typing import Optional, Union
@@ -91,7 +89,7 @@ class TD_Propagator(PropagatorBase):
         
         # Create the kinetic energy propagator
         k = discretization.k
-        KE = 0.5 * mass * k**2
+        KE = 0.5 * k**2 / mass
         T_propagator = np.exp(-1j * KE * dt)
         half_T_propagator = np.exp(-1j * KE * dt / 2)
         
@@ -104,6 +102,7 @@ class TD_Propagator(PropagatorBase):
         for ii in range(ngrid):
             H0[:, :, ii] = hamiltonian.H0(R[ii])
             H[:, :, ii] = hamiltonian.H1(0, R[ii]) + H0[:, :, ii]
+        E, U = diagonalization(H)
             
         return cls(
             dt=dt,
@@ -111,8 +110,8 @@ class TD_Propagator(PropagatorBase):
             H0=H0,
             H=H,
             R=R,
-            E=np.zeros((nstates, ngrid), dtype=np.float64),
-            U=np.zeros((nstates, nstates, ngrid), dtype=np.complex128),
+            E=E,
+            U=U,
             KE=KE,
             T_propagator=T_propagator,
             V_propagator=V_propagator,
@@ -127,15 +126,17 @@ class TD_Propagator(PropagatorBase):
         return self.half_T_propagator
     
     def get_V_propagator(self, t: float) -> NDArray[np.complex128]:
-        # self.update_hamiltonian(t)
+        self.update_hamiltonian(t)
         # get_diabatic_V_propagators(self.H, self.V_propagator, self.dt, self.E, self.U)
         get_diabatic_V_propagators_expm(self.H, self.half_V_propagator, self.dt)
+        # get_diabatic_V_propagators(self.half_V_propagator, self.E, self.U, self.dt/2)
         return self.V_propagator
     
     def get_half_V_propagator(self, t: Optional[float]=None) -> NDArray[np.complex128]:
-        # self.update_hamiltonian(t)
+        self.update_hamiltonian(t)
         # get_diabatic_V_propagators(self.H, self.half_V_propagator, self.dt / 2, self.E, self.U)
         get_diabatic_V_propagators_expm(self.H, self.half_V_propagator, self.dt/2)
+        # get_diabatic_V_propagators(self.half_V_propagator, self.E, self.U, self.dt/2)
         return self.half_V_propagator
     
     def update_hamiltonian(self, t: float) -> None:
@@ -143,6 +144,8 @@ class TD_Propagator(PropagatorBase):
         R: NDArray[np.float64] = self.R
         hamiltonian: TD_HamiltonianBase = self.hamiltonian
         self.H[:] = hamiltonian.H1(t, R, reduce_nuc=False) + self.H0
+        # self.E[:], self.U[:] = diagonalization(self.H)
+        # self.H[:] = self.H0
             
     @property
     def ngrid(self) -> int:
