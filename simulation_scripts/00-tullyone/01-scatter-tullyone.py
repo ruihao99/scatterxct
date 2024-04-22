@@ -60,6 +60,7 @@ def run_single_tullyone(
         dir_movie = None
     
     # run the dynamics
+    scale = 2.0
     return run_time_independent_dynamics(
         hamiltonian=hamiltonian,
         R0=R0,
@@ -67,7 +68,8 @@ def run_single_tullyone(
         dt=dt,
         initial_state=0,
         save_every=10,
-        movie_path=dir_movie
+        movie_path=dir_movie,
+        scale=scale,
     )
     
 
