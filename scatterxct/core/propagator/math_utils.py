@@ -33,7 +33,7 @@ def get_diabatic_V_propagators(
         E_ii[:] = np.ascontiguousarray(E[:, ii])
         U_ii[:, :] = np.ascontiguousarray(U[:, :, ii])
         V_ii[:, :] = np.dot(U_ii, np.diagflat(np.exp(-1j * E_ii * dt)))
-        V[:, :, ii] = np.dot(U_ii.conj().T, V_ii)
+        V[:, :, ii] = np.dot(V_ii, U_ii.conj().T)
     return V 
 
 def get_diabatic_V_propagators_expm(

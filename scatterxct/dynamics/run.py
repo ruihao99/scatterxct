@@ -8,13 +8,16 @@ from scatterxct.core.wavefunction import get_nuclear_density
 from scatterxct.core.wavefunction.wavepacket import estimate_a_from_k0
 from scatterxct.core.wavefunction.math_utils import calculate_state_dependent_R
 
+from scatterxct.dynamics.trajectory_writer import TrajectoryWriter
+from scatterxct.dynamics.properties_writer import PropertiesWriter
+from scatterxct.dynamics.scatter_writer import ScatterWriter
 from .dynamics import ScatterXctDynamics
 from .options import BasisRepresentation
-from .properties import evaluate_properties, append_properties, parse_scatter
+from .properties import evaluate_properties, append_properties, parse_scatter, ScatterXctProperties
 from .step import propagate, SplitOperatorType
 from .utils import safe_boundary
 
-from typing import Optional, Tuple, NamedTuple
+from typing import Optional, Tuple
 from pathlib import Path
 
 def outside_boundary(expected_R: float, R_lims: Tuple[float, float]) -> bool:
@@ -36,22 +39,23 @@ def break_condition(psi: ArrayLike, R: ArrayLike, R_lims: Tuple[float, float]) -
     return outside_boundary(expected_R, R_lims) or any(outside_boundary(expected_R, R_lims) for expected_R in state_dependent_R)
     # return outside_boundary(expected_R, R_lims) or outside_boundary(each_state_expected_R, R_lims) 
 
-def run_time_independent_dynamics(
+def run_dynamics(
     hamiltonian,
     R0: float,
     k0: float,
+    trajectory_path: Path=Path("trajectory.nc"),
+    properties_path: Path=Path("properties.dat"),
+    scatter_path: Path=Path("scatter.dat"),
     initial_state: int=0, # defaults to the ground state
-    dt: float=0.1,
+    dt: float=0.05,
     mass: float=2000.0,
     split_operator_type: SplitOperatorType=SplitOperatorType.VTV,
     basis_representation: BasisRepresentation=BasisRepresentation.Diabatic,
     max_iter: int=int(1e6),
-    save_every: int=10,
-    movie_every: int=1000,
-    movie_path: Optional[Path]=None,
+    save_every: int=50,
     scale: float=1.0,
     apply_absorbing_boundary: bool=False,
-):
+) -> None:
     """Run the time-independent dynamics."""
     dynamics = ScatterXctDynamics(
         hamiltonian=hamiltonian,
@@ -64,7 +68,6 @@ def run_time_independent_dynamics(
         scale=scale
     )
     scatter_R_lims: Optional[Tuple[float, float]] = None
-    a = estimate_a_from_k0(k0)
     if k0 > 0:
         # scatter from the right to the left
         scatter_R_lims = (R0*scale, -R0*scale)
@@ -83,48 +86,32 @@ def run_time_independent_dynamics(
     output = None
     time = 0.0
     
-    def append_suffix(fpath: Path, suffix: str) -> Path:
-        empty_path_str = fpath.with_suffix("").name
-        return fpath.with_name(empty_path_str + suffix + fpath.suffix)
-    
-    # movie is named as *.gif, please change the name to *-diab.gif or *-adiab.gif 
-    diab_movie_path: Optional[Path] = None if movie_path is None else append_suffix(movie_path, "-diab") 
-    adiab_movie_path: Optional[Path] = None if movie_path is None else append_suffix(movie_path, "-adiab")
-    
-    # diab_fname_movie: Optional[str] = None if fname_movie is None else fname_movie.replace(".gif", "-diab.gif")
-    # adiab_fname_movie: Optional[str] = None if fname_movie is None else fname_movie.replace(".gif", "-adiab.gif")
-    
-    diab_scatter_movie = None if diab_movie_path is None else ScatterMovie(
-        R=discretization.R,
-        state_representation=0
-    )
-    adiab_scatter_movie = None if adiab_movie_path is None else ScatterMovie(
-        R=discretization.R,
-        state_representation=1
-    )
-    
     if apply_absorbing_boundary:    
-        abs_boundary = propagator.get_amplitude_reduction()
+        abs_boundary = propagator.get_absorbing_boundary_term()
+        
+    traj_writer = TrajectoryWriter(
+        ngrid=discretization.ngrid,
+        dim=wavefunction_data.nstates,
+        R_grid=discretization.R,
+        K_grid=discretization.k
+    )
+    
+    prop_writer = PropertiesWriter(
+        dim=wavefunction_data.nstates
+    ) 
     
     for istep in range(max_iter):
         if istep % save_every == 0:
             if break_condition(dynamics.wavefunction_data.psi, dynamics.discretization.R, scatter_R_lims):
+                traj_writer.save(trajectory_path)
+                prop_writer.save(properties_path)
                 break
-            # if time >= 10000:
-            #     break
             tlist = np.append(tlist, time)
-            properties: NamedTuple = evaluate_properties(discretization, propagator, wavefunction_data)
+            properties = evaluate_properties(discretization, propagator, wavefunction_data)
             output = append_properties(properties, output)
-        if (istep % movie_every == 0) and (diab_scatter_movie is not None):
-            # we particularly want to save the wavepacket movie in the adiabatic representation
-            # if dynamics.basis_representation == BasisRepresentation.Diabatic:
-            #     nuclear_density: ArrayLike = get_nuclear_density(wavefunction_data.get_psi_of_the_other_representation(U=propagator.U), discretization.dR)
-            # else:
-            #     nuclear_density: ArrayLike = get_nuclear_density(wavefunction_data.psi, discretization.dR)
-            nuclear_density_diab: ArrayLike = get_nuclear_density(wavefunction_data.psi, discretization.dR)
-            nuclear_density_adiab: ArrayLike = get_nuclear_density(wavefunction_data.get_psi_of_the_other_representation(U=propagator.U), discretization.dR)
-            adiab_scatter_movie.append_frame(time, nuclear_density_adiab, propagator.H)
-            diab_scatter_movie.append_frame(time, nuclear_density_diab, propagator.H)
+            traj_writer.write_frame(time, wavefunction_data.psi)
+            prop_writer.write_frame(t=time, Ravg=properties.R, Pavg=properties.k, KE=properties.KE, PE=properties.PE, adiabatic_populations=properties.adiab_populations, diabatic_populations=properties.diab_populations)
+                
         time, wavefunction_data = propagate(
             time, wavefunction_data, propagator, split_operator_type
         )
@@ -136,13 +123,8 @@ def run_time_independent_dynamics(
     nuclear_density_adiab: ArrayLike = get_nuclear_density(wavefunction_data.get_psi_of_the_other_representation(U=propagator.U), discretization.dR)
     scatter_out_diab = parse_scatter(discretization.R, nuclear_density_diab, is_diabatic_representation=True)
     scatter_out_adiab = parse_scatter(discretization.R, nuclear_density_adiab, is_diabatic_representation=False)
+    ScatterWriter(scatter_out=scatter_out_diab, scatter_out_path=scatter_path)
     
-    # finalize the the scatter movie
-    if diab_scatter_movie is not None:
-        for fname, movie in zip([diab_movie_path, adiab_movie_path], [diab_scatter_movie, adiab_scatter_movie]):
-            movie.make_movie()
-            movie.save_animation(fname)
-
-    return {'time': tlist, **output, 'scatter_out_diab': scatter_out_diab, 'scatter_out_adiab': scatter_out_adiab}
+    # return {'time': tlist, **output, 'scatter_out_diab': scatter_out_diab, 'scatter_out_adiab': scatter_out_adiab}
 
 # %%

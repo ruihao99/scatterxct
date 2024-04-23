@@ -1,14 +1,14 @@
 # %%
 import numpy as np
 
-from scatterxct.dynamics.run import run_time_independent_dynamics
+from scatterxct.dynamics.run import run_dynamics
 from scatterxct.models.tullyone import get_tullyone, TullyOnePulseTypes
 from utils import get_tully_one_delay_time
 
 from pathlib import Path
 from typing import Optional
 
-def estimate_dt(Omega: float, dt: float = 0.1) -> float:
+def estimate_dt(Omega: float, dt: float = 0.05) -> float:
     SAFTY_FACTOR: float = 10.0
     T: float = 2 * np.pi / Omega
     if dt > T / SAFTY_FACTOR:
@@ -41,21 +41,24 @@ def main(
         )
         
     # estimate the time step
-    dt = 0.05 if Omega is None else estimate_dt(Omega)
+    dt = 0.05 if Omega is None else estimate_dt(Omega, dt=0.05)
     scale = 2.0
     
+    trajectory_path: Path = Path(f"./trajectory-k0_{k0}.nc") 
+    properties_path: Path = Path(f"./properties-k0_{k0}.dat")
+    scatter_path: Path = Path(f"./scatter-k0_{k0}.dat")
     fname_movie: Path = Path(f"./scatter_movie-k0_{k0}.gif")
     
-    output = run_time_independent_dynamics(
+    output = run_dynamics(
         hamiltonian=hamiltonian,
         R0=R0, 
         k0=k0,
         dt=dt,
+        trajectory_path=trajectory_path,
+        properties_path=properties_path,
+        scatter_path=scatter_path,
         initial_state=0,
-        save_every=10,
-        # fname_movie=fname_movie
-        # fname_movie=None
-        movie_path=fname_movie,
+        save_every=50,
         scale=scale,
         apply_absorbing_boundary=False
     )
@@ -65,7 +68,7 @@ def main(
 # %%
 if __name__ == "__main__":
     R0 = -10.0
-    k0 = 7.0
+    k0 = 20.0
     Omega = 0.1
     tau = 100.0
     phi = 0.0
@@ -74,11 +77,19 @@ if __name__ == "__main__":
     # output = main(R0, k0, Omega, tau, TullyOnePulseTypes.NO_PULSE)
 # %%
 if __name__ == "__main__":
-    time = output['time']
-    R = output['R']
-    k = output['k']
-    diab_populations = np.array(output['diab_populations'])
-    adiab_populations = np.array(output['adiab_populations'])
+    dat = np.loadtxt("properties-k0_20.0.dat")
+    time = dat[:, 0]
+    R = dat[:, 1]
+    k = dat[:, 2]
+    KE = dat[:, 3]
+    PE = dat[:, 4]
+    adiab_populations = dat[:, 5:7]
+    diab_populations = dat[:, 7:]
+    # time = output['time']
+    # R = output['R']
+    # k = output['k']
+    # diab_populations = np.array(output['diab_populations'])
+    # adiab_populations = np.array(output['adiab_populations'])
     import matplotlib.pyplot as plt 
     
     fig = plt.figure(dpi=300)
@@ -119,8 +130,6 @@ if __name__ == "__main__":
     ax.set_ylabel("Adiabatic Population")
     ax.legend()
     
-    KE = np.array(output['KE'])
-    PE = np.array(output['PE'])
     
     # print(KE.shape, diab_populations.shape, PE.shape)
     

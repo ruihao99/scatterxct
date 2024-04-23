@@ -58,6 +58,15 @@ class PropagatorBase(ABC):
         pass
     
     @abstractmethod
+    def get_absorbing_boundary_term(self) -> NDArray[np.complex128]:
+        """get the absorbing boundary term for the propagator.
+
+        Returns:
+            ArrayLike: the absorbing boundary condition.
+        """
+        pass
+    
+    @abstractmethod
     def nstates(self) -> int:
         """Get the number of quantum states in the system.
 

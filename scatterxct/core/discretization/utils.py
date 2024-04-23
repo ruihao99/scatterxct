@@ -71,6 +71,6 @@ def estimate_R_lims(
         # find the nearest number with only small prime factors
         # to harness the power of the FFT!
         ngrid_nearest_prime_factored: int = nearest_number_with_small_prime_factors(ngrid)
-        print(f"ngrid: {ngrid}", f"ngrid_nearest_prime_factored: {ngrid_nearest_prime_factored}")
+        # print(f"ngrid: {ngrid}", f"ngrid_nearest_prime_factored: {ngrid_nearest_prime_factored}")
         return R_lims, ngrid_nearest_prime_factored
       

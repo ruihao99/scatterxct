@@ -5,6 +5,7 @@ from numpy.typing import NDArray
 from scatterxct.core.discretization import Discretization
 from scatterxct.models.nonadiabatic_hamiltonian import HamiltonianBase, TD_HamiltonianBase
 
+from .absorbing_boundary_condition import get_gamma, get_amplitude_reduction_term
 from .propagator_base import PropagatorBase
 from .math_utils import get_diabatic_V_propagators, diagonalization, get_diabatic_V_propagators_expm
 
@@ -47,6 +48,7 @@ class TD_Propagator(PropagatorBase):
     V_propagator: NDArray[np.complex128] # The potential energy propagator for dt (rf)
     half_T_propagator: NDArray[np.complex128] # The kinetic energy propagator for dt/2 (rf)
     half_V_propagator: NDArray[np.complex128] # The potential energy propagator for dt/2 (rf)
+    gamma: NDArray[np.float64]
     
     def __post_init__(self):
         # Type checks for the time independent propagator
@@ -77,7 +79,13 @@ class TD_Propagator(PropagatorBase):
                 raise ValueError(f"The V_propagator should be a 3D array of shape (nstates, nstates, ngrid). Got {shape_V}. Refused to initialize the DiabaticPropagator.")
     
     @classmethod
-    def from_discretization(cls, hamiltonian: HamiltonianBase, discretization: Discretization) -> "TD_Propagator":
+    def from_discretization(
+        cls, 
+        hamiltonian: HamiltonianBase, 
+        discretization: Discretization,
+        U0: float=1.0,
+        alpha: float=0.2,
+    ) -> "TD_Propagator":
         # Make sure the Hamiltonian is time-dependent
         if not isinstance(hamiltonian, TD_HamiltonianBase):
             raise TypeError("The Hamiltonian should be time-dependent")
@@ -116,7 +124,8 @@ class TD_Propagator(PropagatorBase):
             T_propagator=T_propagator,
             V_propagator=V_propagator,
             half_T_propagator=half_T_propagator,
-            half_V_propagator=half_V_propagator
+            half_V_propagator=half_V_propagator,
+            gamma=get_gamma(U0, alpha, ngrid)
         )
     
     def get_T_propagator(self, t: float) -> NDArray[np.complex128]:
@@ -146,6 +155,9 @@ class TD_Propagator(PropagatorBase):
         self.H[:] = hamiltonian.H1(t, R, reduce_nuc=False) + self.H0
         # self.E[:], self.U[:] = diagonalization(self.H)
         # self.H[:] = self.H0
+        
+    def get_absorbing_boundary_term(self) -> NDArray[np.complex128]:
+        return get_amplitude_reduction_term(self.gamma, self.dt)
             
     @property
     def ngrid(self) -> int:

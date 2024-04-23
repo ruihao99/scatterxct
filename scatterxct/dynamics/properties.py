@@ -50,13 +50,15 @@ def evaluate_properties(
     diab_populations = calculate_populations(psi_R, dR)
     adiab_populations = calculate_other_populations(psi_R, U, dR)
     
-    
     # calculate the expected values in k space
     wavefunction_data.real_space_to_k_space()
     psi_k: ArrayLike = wavefunction_data.psi
     expected_k = calculate_mean_k(psi_k, k, dR)
     # expected_KE = calculate_KE(psi_k, k, dR, mass)
+    
     expected_KE = calculate_KE(psi_k, KE, dR)
+    
+    # print(f"dK naive: {dK_naive}, dK yanze: {dK_yanze}")
     wavefunction_data.k_space_to_real_space()
     
     return ScatterXctProperties(
@@ -114,16 +116,16 @@ def _parse_scatter_diabatic(
 ) -> ArrayLike:
     out = np.zeros(4, dtype=np.float64)
     
-    # lower left
+    # lower left (RL)
     out[0] = np.sum(nuclear_density[mask_left, 0])
     
-    # lower right
+    # lower right (TL)
     out[1] = np.sum(nuclear_density[mask_right, 1])
     
-    # upper left
+    # upper left (RU)
     out[2] = np.sum(nuclear_density[mask_left, 1])
     
-    # upper right
+    # upper right (TU)
     out[3] = np.sum(nuclear_density[mask_right, 0])
     
     return out

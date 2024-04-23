@@ -1,6 +1,5 @@
 # %%
 import numpy as np
-import scipy.linalg as LA
 from numpy.typing import NDArray
 
 from scatterxct.core.discretization import Discretization
@@ -8,8 +7,8 @@ from scatterxct.models.nonadiabatic_hamiltonian import HamiltonianBase
 from scatterxct.models.nonadiabatic_hamiltonian import adiabatic_to_diabatic
 
 from .propagator_base import PropagatorBase
-from .absorbing_boundary_condition import get_gamma
-from .math_utils import get_diabatic_V_propagators, diagonalization, get_diabatic_V_propagators_expm
+from .absorbing_boundary_condition import get_gamma, get_amplitude_reduction_term
+from .math_utils import diagonalization, get_diabatic_V_propagators_expm
 
 from dataclasses import dataclass
 from typing import Optional
@@ -130,8 +129,8 @@ class Propagator(PropagatorBase):
     def get_half_V_propagator(self, t: float) -> NDArray[np.complex128]:
         return self.half_V_propagator
     
-    def get_amplitude_reduction(self, ) -> NDArray[np.float64]:
-        return (1 - self.gamma * self.dt)[:, np.newaxis]
+    def get_absorbing_boundary_term(self) -> NDArray[np.complex128]:
+        return get_amplitude_reduction_term(self.gamma, self.dt)
     
     @property
     def nstates(self) -> int:

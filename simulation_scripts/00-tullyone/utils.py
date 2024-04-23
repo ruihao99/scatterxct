@@ -32,10 +32,10 @@ def sample_sigmoid(x_left: float, x_right: float, n: int) -> np.ndarray:
 
 def get_tullyone_p0_list(nsamples: int, pulse_type: TullyOnePulseTypes=TullyOnePulseTypes.NO_PULSE) -> np.ndarray:
     if pulse_type.value == TullyOnePulseTypes.NO_PULSE.value or pulse_type.value == TullyOnePulseTypes.PULSE_TYPE3.value:
-        p0_bounds_0 = (2.0, 12.0); n_bounds_0 = nsamples // 2
+        p0_bounds_0 = (5.0, 12.0); n_bounds_0 = nsamples // 2
         p0_bounds_1 = (13, 35); n_bounds_1 = nsamples - n_bounds_0
     elif pulse_type.value == TullyOnePulseTypes.PULSE_TYPE1.value or pulse_type.value == TullyOnePulseTypes.PULSE_TYPE2.value:
-        p0_bounds_0 = (2.0, 19); n_bounds_0 = nsamples // 3 * 2
+        p0_bounds_0 = (5.0, 19); n_bounds_0 = nsamples // 3 * 2
         p0_bounds_1 = (20, 35); n_bounds_1 = nsamples - n_bounds_0
 
     p0_segment_0 = sample_sigmoid(*p0_bounds_0, n_bounds_0)
