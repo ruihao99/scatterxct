@@ -35,7 +35,7 @@ class TullyOneTD_type1(TD_HamiltonianBase):
         return _construct_2D_H(r, V11, V12, -V11, reduce_nuc=reduce_nuc)
     
     def H1(self, t: Real, r: Union[Real, ArrayLike], reduce_nuc: bool=True) -> ArrayLike:
-        V12 = self.pulse(t) * np.ones_like(r)
+        V12 = -self.pulse(t) * np.ones_like(r)
         return _construct_2D_H(r, np.zeros_like(r), V12, np.zeros_like(r), reduce_nuc=reduce_nuc)
     
     def dH0dR(self, r: Union[Real, ArrayLike]) -> ArrayLike:
