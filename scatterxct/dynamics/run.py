@@ -49,7 +49,7 @@ def run_dynamics(
     initial_state: int=0, # defaults to the ground state
     dt: float=0.05,
     mass: float=2000.0,
-    split_operator_type: SplitOperatorType=SplitOperatorType.VTV,
+    split_operator_type: SplitOperatorType=SplitOperatorType.PLAIN,
     basis_representation: BasisRepresentation=BasisRepresentation.Diabatic,
     max_iter: int=int(1e6),
     save_every: int=50,

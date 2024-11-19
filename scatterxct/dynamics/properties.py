@@ -2,7 +2,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from scatterxct.core.discretization import Discretization
-from scatterxct.core.propagator import PropagatorBase
+from scatterxct.core.propagator import PropagatorBase, PropagatorD, PropagatorA
 from scatterxct.core.wavefunction import (
     WaveFunctionData,
     calculate_mean_R,

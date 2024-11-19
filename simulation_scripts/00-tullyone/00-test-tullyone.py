@@ -15,7 +15,6 @@ def estimate_dt(Omega: float, dt: float = 0.05) -> float:
         return T / SAFTY_FACTOR
     else:
         return dt
-    
 
 def main(
     R0: float = -10.0,
@@ -68,7 +67,7 @@ def main(
 # %%
 if __name__ == "__main__":
     R0 = -10.0
-    k0 = 20.0
+    k0 = 8.0
     Omega = 0.1
     tau = 100.0
     phi = 0.0
