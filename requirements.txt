@@ -3,3 +3,4 @@ numba
 scipy
 matplotlib
 pyFFTW
+pyyaml
