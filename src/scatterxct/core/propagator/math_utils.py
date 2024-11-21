@@ -96,33 +96,31 @@ def get_adiabatic_V_propagators_expm(
         V[:, :, ii] = expm(-1j * Heff * dt)
     return V
 
-def evaluate_propagator_laser(
-    H0: NDArray[np.complex128],  # mol Hamiltonian in diabatic representation
-    mu: NDArray[np.complex128],  # dipole moment in diabatic representation
-    Et: float,     # time-dependent electric field
-    U_old: NDArray[np.complex128],  # previous U matrix
+
+@njit
+def expm_numba(H: np.ndarray, dt: float) -> np.ndarray:
+    E, U = np.linalg.eigh(H)
+    return np.dot(U, np.dot(np.diag(np.exp(-1j * E * dt)), U.T.conj()))
+
+@njit
+def get_propagators(
+    H_arr: np.ndarray,
     dt: float,
-):
-    nstates, _, ngrid = H0.shape
-    H = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
-    V_prop = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
-    E = np.zeros((nstates, ngrid), dtype=np.float64)
-    U = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
-
+) -> np.ndarray:
+    dim, dim, ngrid = H_arr.shape
+    propagators = np.zeros((dim, dim, ngrid), dtype=np.complex128)
     for ii in range(ngrid):
-        # evaluate the total Hamiltonian
-        H[:, :, ii] = H0[:, :, ii] - mu[:, :, ii] * Et
+        H = np.ascontiguousarray(H_arr[:,:,ii])
+        propagators[:,:,ii] = expm_numba(H, dt)
+    return propagators
 
-        # diagonalize the total Hamiltonian
-        Etmp, Utmp = diagonalize_and_project(H[:, :, ii], U_old[:, :, ii])
-
-        # compute the propagator (use eigen decomposition for expm)
-        V_tmp = np.diagflat(np.exp(-1j * Etmp * dt))
-        V_tmp = np.dot(Utmp, np.dot(V_tmp, Utmp.conj().T))
-
-        # store the results
-        E[:, ii] = Etmp
-        U[:, :, ii] = Utmp
-        V_prop[:, :, ii] = V_tmp
-    return H, E, U, V_prop
+def evaluate_propagator_laser(
+    Hd: NDArray[np.complex128],  # mol Hamiltonian in diabatic representation
+    Md: NDArray[np.complex128],  # dipole moment in diabatic representation
+    Et: float,     # time-dependent electric field
+    dt: float,
+) -> Tuple[NDArray[np.complex128], NDArray[np.complex128], NDArray[np.complex128], NDArray[np.complex128]]:
+    nstates, _, ngrid = Hd.shape
+    H = Hd - Md * Et
+    return H, get_propagators(H, dt)
 
