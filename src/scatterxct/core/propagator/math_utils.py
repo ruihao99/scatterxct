@@ -3,7 +3,7 @@ import numpy as np
 import numpy.linalg as LA
 from scipy.linalg import expm
 from numpy.typing import NDArray
-from numba import jit
+from numba import jit, njit
 from scatterxct.core.discretization import fddrv
 from scatterxct.hamiltonian.linalg import diagonalize_and_project
 
