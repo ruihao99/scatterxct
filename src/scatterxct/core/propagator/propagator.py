@@ -197,7 +197,7 @@ class Propagator:
                 dt=self.dt/2
             )
             
-            Et_plus = self.pulse.signal(t + dt)
+            Et_plus = self.pulse.signal(t + self.dt)
             H2, half_V_2 = evaluate_propagator_laser(
                 Hd=self.Hd,
                 Md=self.Md,
