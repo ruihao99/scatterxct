@@ -4,10 +4,8 @@ import numpy as np
 from scatterxct.mytypes import ComplexOperator, ComplexVectorOperator, RealVector
 from scatterxct.hamiltonian.hamiltonian_base import HamiltonianBase, HamiData
 from scatterxct.hamiltonian.tullyone.common import H0_diab, gradH0_diab
-from scatterxct.hamiltonian.linalg import (
-    diagonalize_and_project,
-    udagger_o_u
-)
+from scatterxct.hamiltonian.linalg import udagger_o_u
+from scatterxct.hamiltonian.phase_tracking import PhaseTracking
 
 from dataclasses import dataclass, field
 
@@ -29,30 +27,75 @@ class TullyOne(HamiltonianBase):
         B: float=1.6, 
         C: float=0.005, 
         D: float=1.0,
-        mass: float=2000.0
+        mass: float=2000.0,
+        phase_tracking: PhaseTracking=PhaseTracking("none")
     ):
-        return cls(A=A, B=B, C=C, D=D, mass=np.array([mass], dtype=np.float64))
+        return cls(A=A, B=B, C=C, D=D, 
+                   mass=np.array([mass], dtype=np.float64), 
+                   phase_tracking=phase_tracking)
     
-    def eval_hami(self, R: RealVector, Uold: ComplexOperator=None) -> HamiData:
-        # compute the diabatic Hamiltonian and its gradient
-        H0 = H0_diab(R, self.A, self.B, self.C, self.D)
-        gradH0 = gradH0_diab(R, self.A, self.B, self.C, self.D)
+    def eval_hami(
+        self, R: RealVector, 
+        Uold: ComplexOperator=None, 
+    ) -> HamiData:
+        # compute the diabatic Hamiltonian 
+        Hd = H0_diab(R, self.A, self.B, self.C, self.D)
+        Gd = gradH0_diab(R, self.A, self.B, self.C, self.D)
+        Md = None
+        Dd = None
         
-        # compute the adiabatic Hamiltonian and its gradient
-        E0, U0 = diagonalize_and_project(H0, Uold)
-        G0 = udagger_o_u(gradH0, U0)
+        # compute the adiabatic Hamiltonian 
+        E, U = self.phase_tracking.diag(Hdiab=Hd, U_last=Uold)
+        Ha = np.diagflat(E)
+        Ga = udagger_o_u(Gd, U)
+            
         
-        # in this time-independent case, don't need to evaluate dipole
-        mu = None
-        gradmu = None
+        Ma = None
+        Da = None
         
         # in the tully model, there's no external classical potential 
-        V = 0.0
-        gradV = np.zeros((self.nclass,), dtype=np.float64)
+        Vext = 0.0
+        Gext = np.zeros((self.nclass,), dtype=np.float64)
         
-        return HamiData(H0, gradH0, E0, G0, U0, mu, gradmu, V, gradV)
-   
+        return HamiData(Hd, Gd, Md, Dd, Ha, Ga, Ma, Da, U, Vext, Gext)
     
+    def eval_hami_recursive(
+        self, R: RealVector,
+        Hold: ComplexOperator,
+        Uold: ComplexVectorOperator,
+        dt: float,
+    ) -> HamiData:
+        # compute the diabatic Hamiltonian 
+        Hd = H0_diab(R, self.A, self.B, self.C, self.D)
+        Gd = gradH0_diab(R, self.A, self.B, self.C, self.D)
+        Md = None
+        Dd = None
+        
+        # compute the adiabatic Hamiltonian 
+        E, U = recursive_project(Hd, Hold, Uold, dt)
+        Ha = np.diagflat(E)
+        Ga = udagger_o_u(Gd, U)
+            
+        
+        Ma = None
+        Da = None
+        
+        # in the tully model, there's no external classical potential 
+        Vext = 0.0
+        Gext = np.zeros((self.nclass,), dtype=np.float64)
+        
+        return HamiData(Hd, Gd, Md, Dd, Ha, Ga, Ma, Da, U, Vext, Gext)
+    
+    def harmornic_params(self, ):
+        raise ValueError(
+            """ The Tully model does not have a harmonic approximation """
+        )
+        
+    def morse_params(self, ):
+        raise ValueError(
+            """ The Tully model does not have a Morse potential """
+        )
+            
 # %%
 def test_tullyone():
     tullyone = TullyOne.init()
@@ -65,16 +108,20 @@ def test_tullyone():
     Gout = np.zeros((nquant, nquant, 1, N), dtype=np.complex128)
     
     for ii, r in enumerate(R):
-        U = None if ii == 0 else hdata.U0
+        U = None if ii == 0 else hdata.U
         hdata = tullyone.eval_hami(r, Uold=U)
-        Eout[ii, :] = hdata.E0
-        Gout[:, :, :, ii] = hdata.G0
+        Eout[ii, :] = hdata.Ha.diagonal()
+        Gout[:, :, :, ii] = hdata.Gd
        
     from matplotlib import pyplot as plt 
     fig = plt.figure()
     ax = fig.add_subplot(111)
     ax.plot(R[:, 0], Eout[:, 0].real, label="H11")
     ax.plot(R[:, 0], Eout[:, 1].real, label="H22")
+    w = 0.01
+    # w = 0.02
+    ax.axhline(-w/2, color="black", linestyle="--")
+    ax.axhline(w/2, color="black", linestyle="--")
     plt.show()
     
         

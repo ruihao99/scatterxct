@@ -17,6 +17,18 @@ class SplitOperatorType(Enum):
     PLAIN = 1
     TVT = 2
     VTV = 3
+    
+@njit
+def vectorized_multiply(
+    V, psi,
+):
+    ngrid, nstates = psi.shape
+    output = np.zeros((ngrid, nstates), dtype=np.complex128)
+    for i in range(ngrid):
+        for j in range(nstates):
+            for k in range(nstates):
+                output[i, j] += V[j, k, i] * psi[i, k]
+    return output
 
 def kinetic_propagate(
     psi_data: WaveFunctionData, # (ngrid, nstates)
@@ -40,39 +52,38 @@ def potential_propagate(
 ) -> WaveFunctionData:
     # technical note: WavefunctionData is an immutable dataclass
     # (more details explained in the kinetic_propagate function)
-    # output = np.einsum("jki,ik->ij", V_propagator, psi_data.psi)
-    output = np.einsum("jki,ik->ij", V_propagator, psi_data.psi)
-    # psi_data.psi[:] = np.einsum("jki,ik->ij", V_propagator, psi_data.psi)
+    output = vectorized_multiply(V_propagator, psi_data.psi)    
     psi_data.psi[:] = output
     return psi_data    
     
 def plain_propagate(
     psi_data: WaveFunctionData, # (ngrid, nstates)
-    T_propagator: ArrayLike, # (ngrid, ) 
-    V_propagator: ArrayLike, # (nstates, nstates, ngrid)
+    T_prop: ArrayLike, # (ngrid, ) 
+    V_prop: ArrayLike, # (nstates, nstates, ngrid)
 ) -> WaveFunctionData:
-    psi_data = kinetic_propagate(psi_data, T_propagator)
-    psi_data = potential_propagate(psi_data, V_propagator)
+    psi_data = kinetic_propagate(psi_data, T_prop)
+    psi_data = potential_propagate(psi_data, V_prop)
     return psi_data
 
 def TVT_propagate(
     psi_data: WaveFunctionData, # (ngrid, nstates)
-    half_T_propagator: ArrayLike, # (ngrid, )  
-    V_propagator: ArrayLike, # (ngrid, nstates, nstates)
+    half_T_prop: ArrayLike, # (ngrid, )  
+    V_prop: ArrayLike, # (ngrid, nstates, nstates)
 ) -> WaveFunctionData:
-    psi_data = kinetic_propagate(psi_data, half_T_propagator)
-    psi_data = potential_propagate(psi_data, V_propagator)
-    psi_data = kinetic_propagate(psi_data, half_T_propagator)
+    psi_data = kinetic_propagate(psi_data, half_T_prop)
+    psi_data = potential_propagate(psi_data, V_prop)
+    psi_data = kinetic_propagate(psi_data, half_T_prop)
     return psi_data
 
 def VTV_propagate(
     psi_data: WaveFunctionData, # (ngrid, nstates)
     T_propagator: ArrayLike, # (ngrid, ) 
-    half_V_propagator: ArrayLike, # (nstates, nstates, ngrid)
+    half_V_prop1: ArrayLike, # (nstates, nstates, ngrid)
+    half_V_prop2: ArrayLike, # (nstates, nstates, ngrid)
 ) -> WaveFunctionData:
-    psi_data = potential_propagate(psi_data, half_V_propagator)
+    psi_data = potential_propagate(psi_data, half_V_prop1)
     psi_data = kinetic_propagate(psi_data, T_propagator)
-    psi_data = potential_propagate(psi_data, half_V_propagator)
+    psi_data = potential_propagate(psi_data, half_V_prop2)
     return psi_data
 
 def propagate(
@@ -82,19 +93,19 @@ def propagate(
     split_operator_type: SplitOperatorType = SplitOperatorType.PLAIN,
 ) -> Tuple[float, WaveFunctionData]:
     if split_operator_type == SplitOperatorType.PLAIN:
-        T_propagator: ArrayLike = propagator.get_T_propagator()
-        V_propagator: ArrayLike = propagator.get_V_propagator(time)
+        T_prop = propagator.get_T_propagator()
+        V_prop = propagator.get_V_propagator(time)
         time += propagator.dt
-        return time, plain_propagate(psi_data, T_propagator, V_propagator)
+        return time, plain_propagate(psi_data, T_prop, V_prop)
     elif split_operator_type == SplitOperatorType.TVT:
-        half_T_propagator: ArrayLike = propagator.get_half_T_propagator()
-        V_propagator: ArrayLike = propagator.get_V_propagator(time)
+        half_T_prop = propagator.get_half_T_propagator()
+        V_prop = propagator.get_V_propagator(time)
         time += propagator.dt
-        return time, TVT_propagate(psi_data, half_T_propagator, V_propagator)
+        return time, TVT_propagate(psi_data, half_T_prop, V_prop)
     elif split_operator_type == SplitOperatorType.VTV:
-        T_propagator: ArrayLike = propagator.get_T_propagator()
-        half_V_propagator: ArrayLike = propagator.get_half_V_propagator(time)
+        T_prop = propagator.get_T_propagator()
+        half_V_prop1, half_V_prop2 = propagator.get_half_V_propagator(time)
         time += propagator.dt
-        return time, VTV_propagate(psi_data, T_propagator, half_V_propagator)
+        return time, VTV_propagate(psi_data, T_prop, half_V_prop1, half_V_prop2)
     else:
         raise ValueError(f"Unknown split operator type: {split_operator_type}")

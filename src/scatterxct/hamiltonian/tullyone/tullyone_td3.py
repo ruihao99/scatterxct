@@ -12,7 +12,7 @@ from scatterxct.hamiltonian.phase_tracking import PhaseTracking
 from dataclasses import dataclass, field
 
 @dataclass
-class TullyOneTD2(HamiltonianBase):
+class TullyOneTD3(HamiltonianBase):
     nquant: int = 2
     nclass: int = 1
     laser: bool = True
@@ -70,7 +70,7 @@ class TullyOneTD2(HamiltonianBase):
         Dd = self.grad_dipole(R)
         
         # compute the adiabatic Hamiltonian 
-        E, U = recursive_project(Hd, Hold, Uold, dt)
+        E, U = recursive_project(H, Hold. Uold, dt)
         Ha = np.diagflat(E)
         Ga = udagger_o_u(Gd, U)
         Ma = udagger_o_u(Md, U)
@@ -81,15 +81,14 @@ class TullyOneTD2(HamiltonianBase):
         Gext = np.zeros((self.nclass,), dtype=np.float64)
         
         return HamiData(Hd, Gd, Md, Dd, Ha, Ga, Ma, Da, U, Vext, Gext) 
-        
-    
+         
        
     def dipole(self, R: RealVector) -> ComplexOperator:
         """ Dipole moment operator to interact with the electric field """
         v12 = np.sum(V12(R, self.C1, self.D1))
         return np.array(
-            [[0.0, v12],
-             [v12, 0.0]],
+            [[v12, 0.0],
+             [0.0, -v12]],
             dtype=np.complex128,
         )
         
@@ -98,23 +97,22 @@ class TullyOneTD2(HamiltonianBase):
         gradv12 = gradV12(R, self.C1, self.D1)
         zeros = np.zeros(self.nclass, dtype=np.complex128)
         return np.array(
-            [[zeros, gradv12],
-             [gradv12, zeros]],
+            [[gradv12, zeros],
+             [zeros, -gradv12]],
             dtype=np.complex128,
         )
         
     def harmornic_params(self):
-        raise ValueError("TullyOneTD2 does not have harmonic potential")    
+        raise ValueError("TullyOneTD3 does not have harmonic potential")    
     
     def morse_params(self):
-        raise ValueError("TullyOneTD2 does not have Morse potential")
+        raise ValueError("TullyOneTD3 does not have Morse potential")
     
     def get_max_dipole(self):
         return 1.2 * self.C1
-        
     
-def test_tullyone_td2():
-    hami = TullyOneTD2.init()
+def test_tullyone_td3():
+    hami = TullyOneTD3.init()
     
     N = 100 
     t = np.linspace(0, 3, N)
@@ -137,6 +135,9 @@ def test_tullyone_td2():
     ax = fig.add_subplot(111)
     ax.plot(R[:, 0], Eout[:, 0].real, label="H11")
     ax.plot(R[:, 0], Eout[:, 1].real, label="H22")
+    L = 0.0075
+    ax.axhline(y=L, color='r', linestyle='--', label="Laser")
+    ax.axhline(y=-L, color='r', linestyle='--')
     ax.legend() 
     plt.show() 
     
@@ -150,6 +151,8 @@ def test_tullyone_td2():
     # plot adiabatic transition dipole moment
     fig = plt.figure()
     ax = fig.add_subplot(111)
+    ax.plot(R[:, 0], mu_adia_out[:, 0, 0].real, label="mu11")
+    ax.plot(R[:, 0], mu_adia_out[:, 1, 1].real, label="mu22")
     ax.plot(R[:, 0], mu_adia_out[:, 0, 1].real, label="mu12")
     ax.plot(R[:, 0], mu_adia_out[:, 1, 0].real, label="mu21")
     ax.legend()
@@ -157,7 +160,7 @@ def test_tullyone_td2():
 
 # %%
 if __name__ == '__main__':
-    test_tullyone_td2()
+    test_tullyone_td3()
     
 # %%
         

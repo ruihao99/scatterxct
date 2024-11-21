@@ -31,7 +31,7 @@ def parse_model(model_cfg: dict, pulse_cfg: Union[None, dict]) -> Tuple[Hamilton
     # parse the model hamiltonian
     if model_cfg["kind"] == "tully_one":
         is_scattering = True
-        model, pulse = parse_tullyone(model_cfg, pulse_cfg) 
+        model, pulse = parse_tullyone(model_cfg, pulse_cfg, phase_tracking="mai2015")
         return model, pulse, is_scattering
     else:
         raise ValueError(

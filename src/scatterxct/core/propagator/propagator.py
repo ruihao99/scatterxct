@@ -24,14 +24,17 @@ class Propagator:
     H: CArray  # The total diabatic Hamiltonian (H_tot)
     E: RArray  # The eigenvalues of H_tot
     U: CArray  # The instantaneous eigenvectors of H_tot
+    
     # molecular Hamiltonian data
-    H0: CArray      # The diabatic molecular Hamiltonian (H_mol)
-    gradH0: CArray  # The gradient of H_mol
-    E0: RArray      # The eigenvalues of H_mol
-    U0: CArray      # The eigenvectors of H_mol
-    G0: CArray      # The generalized gradient of H_mol
-    mu_ad: CArray   # The dipole moment (H_mol adiabatic representation)
-    mu_diab: CArray # The dipole moment (H_mol diabatic representation)
+    Hd: CArray # diabatic (d) hamiltonian (H0)
+    Gd: CArray # gradient of (d) hamiltonian
+    Md: CArray # (d) dipole operator 
+    Dd: CArray # gradient of (d) dipole operator
+    Ha: CArray # adiabatic (a) hamiltonian
+    Ga: CArray # gradient of (a) hamiltonian
+    Ma: CArray # (a) dipole operator
+    Da: CArray # gradient of (a) dipole operator
+    U0: CArray # Unitary transformation from diabatic to adiabatic 
     V_propagator: CArray      # The potential energy propagator
     half_V_propagator: CArray # The potential energy propagator for dt/2    
     # Kinetic energy data
@@ -69,7 +72,7 @@ class Propagator:
         hamiltonian: HamiltonianBase,
         discretization: Discretization,
         pulse: PulseBase,
-        U0: float=1.0,
+        UU0: float=1.0,
         alpha: float=0.2,
     ) -> 'Propagator':
         # unpack discretization data    
@@ -84,31 +87,40 @@ class Propagator:
         T_prop = np.exp(-1j * KE * dt)  
         half_T_prop = np.exp(-1j * KE * dt / 2)
         
-        
-        # Create the adiabatic potential energy propagator
+        # grid points
         R = discretization.R
-        U0_last = None
+        
+        ### Total Hamiltonian data 
         H = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
         E = np.zeros((nstates, ngrid), dtype=np.float64)
         U = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
-        H0 = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
-        gradH0 = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
-        E0 = np.zeros((nstates, ngrid), dtype=np.float64)
+        
+        ### Molecular Hamiltonian data  
+        U0_last = None
+        Hd = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
+        Gd = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
+        Md = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
+        Dd = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
+        Ha = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
+        Ga = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
+        Ma = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
+        Da = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
         U0 = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
-        G0 = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
-        mu_ad = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
-        mu_diab = np.zeros((nstates, nstates, ngrid), dtype=np.complex128)
+        
         for ii, rr in enumerate(R):
             hamdata = hamiltonian.eval_hami(rr, Uold=U0_last)
-            H0[:, :, ii] = hamdata.H0
-            gradH0[:, :, ii] = hamdata.gradH0
-            E0[:, ii] = hamdata.E0
-            U0[:, :, ii] = hamdata.U0
-            G0[:, :, ii] = hamdata.G0[:,:]
-            mu_ad[:, :, ii] = hamdata.mu
-            # transform the adiabatic dipole moment to diabatic representation
-            mu_diab[:, :, ii] = np.dot(U0[:,:,ii], np.dot(mu_ad[:,:,ii], U0[:,:,ii].T))
-            U0_last = U0[:, :, ii]
+            hdata = hamiltonian.eval_hami([rr], Uold=U0_last)
+            Hd[:, :, ii] = hdata.Hd
+            Gd[:, :, ii] = hdata.Gd[:,:,0]
+            Ha[:, :, ii] = hdata.Ha
+            Ga[:, :, ii] = hdata.Ga[:,:,0]
+            if hdata.Dd is not None:
+                Md[:, :, ii] = hdata.Md
+                Dd[:, :, ii] = hdata.Dd[:,:,0]
+                Ma[:, :, ii] = hdata.Ma
+                Da[:, :, ii] = hdata.Da[:,:,0]
+            U0[:, :, ii] = hdata.U
+            U0_last = hdata.U
         
         # initialize the V propagators
         V_prop = np.zeros((nstates, nstates, ngrid), dtype=np.complex128) 
@@ -117,33 +129,36 @@ class Propagator:
         # evaluate the time-independent V propagators if the simulation
         # is free from laser field
         if pulse is None:
-            get_diabatic_V_propagators_expm(H=H0, V=V_prop, dt=dt)
-            get_diabatic_V_propagators_expm(H=H0, V=half_V_prop, dt=dt/2)
-            H[:] = H0[:]
-            E[:] = E0[:]
-            U[:] = U0[:]
+            get_diabatic_V_propagators_expm(H=Hd, V=V_prop, dt=dt)
+            get_diabatic_V_propagators_expm(H=Hd, V=half_V_prop, dt=dt/2)
+            H[:] = Hd[:]
+            for ii in range(ngrid):
+                E[:, ii] = np.real(np.diag(Ha[:, :, ii]))
+                U[:, :, ii] = U0[:, :, ii]  
             
         return cls(
             dt=dt,
             H=H,
             E=E,
             U=U,
-            H0=H0,
-            gradH0=gradH0,
-            E0=E0,
+            Hd=Hd,
+            Gd=Gd,
+            Md=Md,
+            Dd=Dd,
+            Ha=Ha,
+            Ga=Ga,
+            Ma=Ma,
+            Da=Da,
             U0=U0,
-            G0=G0,
-            mu_ad=mu_ad,
-            mu_diab=mu_diab,
             V_propagator=V_prop,
             half_V_propagator=half_V_prop,
             KE=KE,
             T_prop=T_prop,
             half_T_prop=half_T_prop,
             pulse=pulse,
-            gamma=get_gamma(U0, alpha, ngrid)
-        )   
-        
+            gamma=get_gamma(UU0, alpha, ngrid)
+        )
+            
     
     def get_T_propagator(self,):
         return self.T_prop
@@ -157,41 +172,43 @@ class Propagator:
         else:
             assert isinstance(t, (int, float)), "The time should be a real number."
             laser_signal = self.pulse.signal(t)
-            H, E, U, V = evaluate_propagator_laser(
-                H0=self.H0,
-                mu=self.mu_diab,
+            H, V = evaluate_propagator_laser(
+                Hd=self.Hd,
+                Md=self.Md,
                 Et=laser_signal,
-                U_old=self.U,
-                dt=self.dt
+                dt=self.dt 
             )
             # update the data
             self.H[:] = H
-            self.E[:] = E
-            self.U[:] = U
             self.V_propagator[:] = V
-            print("V_propagator updated")
             return self.V_propagator
             
     
     def get_half_V_propagator(self, t: Optional[float]=None):   
         if self.pulse is None:
-            return self.half_V_propagator
+            return self.half_V_propagator, self.half_V_propagator
         else:
             assert isinstance(t, (int, float)), "The time should be a real number."
-            laser_signal = self.pulse.signal(t)
-            H, E, U, V = evaluate_propagator_laser(
-                H0=self.H0,
-                mu=self.mu_diab,
+            Et = self.pulse.signal(t+self.dt/2)
+            H1, half_V_1 = evaluate_propagator_laser(
+                Hd=self.Hd,
+                Md=self.Md,
                 Et=laser_signal,
-                U_old=self.U,
                 dt=self.dt/2
             )
+            
+            Et_plus = self.pulse.signal(t + dt)
+            H2, half_V_2 = evaluate_propagator_laser(
+                Hd=self.Hd,
+                Md=self.Md,
+                Et=laser_signal,
+                dt=self.dt/2
+            )
+           
             # update the data
-            self.H[:] = H
-            self.E[:] = E
-            self.U[:] = U
-            self.half_V_propagator[:] = V
-            return self.half_V_propagator
+            self.H[:] = H2
+            self.half_V_propagator[:] = half_V_2
+            return half_V_1, half_V_2
         
     def get_absorbing_boundary_term(self):
         return get_amplitude_reduction_term(self.gamma, self.dt)
