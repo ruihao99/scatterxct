@@ -41,7 +41,7 @@ def evaluate_properties(
     k: ArrayLike = discretization.k
     mass: float = discretization.mass
     # E: ArrayLike = propagator.E
-    U: ArrayLike = propagator.U
+    U: ArrayLike = propagator.U0
     KE: ArrayLike = propagator.KE
     
     # calculate the expected values in real space
