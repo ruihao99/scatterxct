@@ -193,7 +193,7 @@ class Propagator:
             H1, half_V_1 = evaluate_propagator_laser(
                 Hd=self.Hd,
                 Md=self.Md,
-                Et=laser_signal,
+                Et=Et,
                 dt=self.dt/2
             )
             
@@ -201,7 +201,7 @@ class Propagator:
             H2, half_V_2 = evaluate_propagator_laser(
                 Hd=self.Hd,
                 Md=self.Md,
-                Et=laser_signal,
+                Et=Et_plus,
                 dt=self.dt/2
             )
            
