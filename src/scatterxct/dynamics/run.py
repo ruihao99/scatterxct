@@ -123,7 +123,7 @@ def run_dynamics(
             
     # parse_the scatter results
     nuclear_density_diab: ArrayLike = get_nuclear_density(wavefunction_data.psi, discretization.dR)
-    nuclear_density_adiab: ArrayLike = get_nuclear_density(wavefunction_data.get_psi_of_the_other_representation(U=propagator.U), discretization.dR)
+    nuclear_density_adiab: ArrayLike = get_nuclear_density(wavefunction_data.get_psi_of_the_other_representation(U=propagator.U0), discretization.dR)
     # scatter_out_diab = parse_scatter(discretization.R, nuclear_density_diab, is_diabatic_representation=True)
     # scatter_out_adiab = parse_scatter(discretization.R, nuclear_density_adiab, is_diabatic_representation=False)
     
